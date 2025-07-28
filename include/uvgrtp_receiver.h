@@ -1,6 +1,6 @@
 /**
  * @file uvgrtp_receiver.h
- * @brief RTP приёмник на основе uvgRTP библиотеки с автоматической дефрагментацией
+ * @brief RTP receiver based on the uvgRTP library with automatic defragmentation
  */
 
 #pragma once
@@ -17,10 +17,10 @@
 #include <chrono>
 
 /**
- * @brief Готовый H.264 кадр (уже дефрагментированный uvgRTP)
+ * @brief A complete H.264 frame (already defragmented by uvgRTP)
  */
 struct H264Frame {
-    std::vector<uint8_t> data;  // Полный кадр, готовый для декодирования
+    std::vector<uint8_t> data;  // Full frame, ready for decoding
     uint32_t timestamp;
     std::chrono::steady_clock::time_point received_time;
 
@@ -30,8 +30,8 @@ struct H264Frame {
 };
 
 /**
- * @brief RTP приёмник на основе uvgRTP с автоматической дефрагментацией
- * uvgRTP автоматически собирает фрагментированные RTP пакеты в полные H.264 кадры
+ * @brief RTP receiver based on uvgRTP with automatic defragmentation.
+ * uvgRTP automatically reassembles fragmented RTP packets into complete H.264 frames.
  */
 class UvgRTPReceiver {
 public:
@@ -48,7 +48,7 @@ public:
 
     bool isRunning() const { return running_; }
 
-    // Статистика
+    // Statistics
     struct Statistics {
         uint64_t packets_received = 0;
         uint64_t bytes_received = 0;
@@ -64,23 +64,23 @@ private:
     static void frameReceiveHook(void* arg, uvgrtp::frame::rtp_frame* frame);
     void processFrame(uvgrtp::frame::rtp_frame* frame);
 
-    // uvgRTP объекты
+    // uvgRTP objects
     std::unique_ptr<uvgrtp::context> ctx_;
     std::unique_ptr<uvgrtp::session> session_;
     uvgrtp::media_stream* stream_;
 
-    // Сетевые параметры
+    // Network parameters
     std::string local_ip_;
     uint16_t local_port_;
 
-    // Состояние
+    // State
     std::atomic<bool> running_;
     std::atomic<bool> initialized_;
 
-    // Callback для готовых кадров
+    // Callback for complete frames
     FrameCallback frame_callback_;
 
-    // Статистика
+    // Statistics
     mutable std::mutex stats_mutex_;
     Statistics stats_;
 };

@@ -10,15 +10,15 @@ class DmaBufAllocator;
 /**
  * @brief V4L2 Hardware H.264 Decoder
  * 
- * Этот класс предоставляет интерфейс для аппаратного декодирования H.264 видео
- * через Linux V4L2 API. Использует DMA-buf буферы для эффективного обмена данными
- * и поддерживает Memory-to-Memory операции с multiplanar буферами.
+ * This class provides an interface for hardware-accelerated H.264 video decoding
+ * via the Linux V4L2 API. It uses DMA-buf buffers for efficient data exchange
+ * and supports Memory-to-Memory operations with multiplanar buffers.
  */
 class V4L2Decoder {
 public:
     enum class DisplayType {
-        NONE,       // Без отображения
-        DRM_DMABUF  // TRUE Zero-Copy через DMA-buf
+        NONE,       // No display
+        DRM_DMABUF  // TRUE Zero-Copy via DMA-buf
     };
 
 private:
@@ -31,8 +31,8 @@ public:
     [[nodiscard]] bool initialize(const DecoderConfig& config);
     [[nodiscard]] bool setDisplay();
     [[nodiscard]] bool decodeData(const uint8_t* data, size_t size);
-    [[nodiscard]] bool flushDecoder();  // Принудительная очистка буферов декодера
-    [[nodiscard]] bool resetBuffers();  // Полный сброс и пересоздание буферов
+    [[nodiscard]] bool flushDecoder();  // Force flush decoder buffers
+    [[nodiscard]] bool resetBuffers();  // Full reset and recreation of buffers
     [[nodiscard]] int getDecodedFrameCount() const;
 
     V4L2Decoder(const V4L2Decoder&) = delete;

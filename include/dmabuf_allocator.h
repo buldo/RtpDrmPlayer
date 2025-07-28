@@ -25,43 +25,43 @@ public:
     /**
      * @brief Allocator initialization
      * @param device_path path to device (e.g., /dev/dri/card0)
-     * @return true при успехе
+     * @return true on success
      */
     [[nodiscard]] bool initialize(std::string_view device_path = "/dev/dri/card0");
 
     /**
-     * @brief Выделение DMA-buf буфера
-     * @param size размер буфера в байтах (максимум 4GB)
-     * @return информация о выделенном буфере
+     * @brief Allocate a DMA-buf buffer
+     * @param size buffer size in bytes (max 4GB)
+     * @return information about the allocated buffer
      */
     [[nodiscard]] DmaBufInfo allocate(size_t size);
 
     /**
-     * @brief Освобождение DMA-buf буфера
-     * @param buf_info информация о буфере для освобождения
+     * @brief Deallocate a DMA-buf buffer
+     * @param buf_info information about the buffer to deallocate
      */
     void deallocate(const DmaBufInfo& buf_info);
 
     /**
-     * @brief Маппинг DMA-buf в адресное пространство процесса
-     * @param buf_info информация о буфере
-     * @return true при успехе
+     * @brief Map a DMA-buf into the process's address space
+     * @param buf_info buffer information
+     * @return true on success
      */
     [[nodiscard]] bool map(DmaBufInfo& buf_info);
 
     /**
-     * @brief Размаппинг DMA-buf
-     * @param buf_info информация о буфере
+     * @brief Unmap a DMA-buf
+     * @param buf_info buffer information
      */
     void unmap(DmaBufInfo& buf_info);
 
     /**
-     * @brief Проверка поддержки DMA-buf
-     * @return true если DMA-buf поддерживается
+     * @brief Check for DMA-buf support
+     * @return true if DMA-buf is supported
      */
     [[nodiscard]] bool isSupported() const;
 
-    // Запрет копирования
+    // Disallow copying
     DmaBufAllocator(const DmaBufAllocator&) = delete;
     DmaBufAllocator& operator=(const DmaBufAllocator&) = delete;
 

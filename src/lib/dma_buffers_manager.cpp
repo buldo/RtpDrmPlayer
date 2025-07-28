@@ -20,8 +20,8 @@ bool DmaBuffersManager::requestOnDevice(V4L2Device& device) {
     req.type = type_;
     req.memory = V4L2_MEMORY_DMABUF;
     if (!device.request_buffers(req)) {
-        std::cerr << "Ошибка запроса " << (type_ == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE ? "входных" : "выходных") 
-                  << " DMA-buf буферов" << std::endl;
+        std::cerr << "Error requesting " << (type_ == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE ? "input" : "output") 
+                  << " DMA-buf buffers" << std::endl;
         return false;
     }
     return true;
@@ -32,18 +32,18 @@ bool DmaBuffersManager::releaseOnDevice(V4L2Device& device) {
     req.count = 0;
     req.type = type_;
     req.memory = V4L2_MEMORY_DMABUF;
-    // Мы не проверяем результат, так как это делается при очистке
+    // We don't check the result as this is done during cleanup
     (void)device.request_buffers(req);
     return true;
 }
 
 bool DmaBuffersManager::allocate(size_t buffer_size) {
     if (!allocator_) {
-        std::cerr << "DmaBufAllocator не инициализирован" << std::endl;
+        std::cerr << "DmaBufAllocator not initialized" << std::endl;
         return false;
     }
 
-    deallocate(); // Освобождаем старые буферы перед выделением новых
+    deallocate(); // Free old buffers before allocating new ones
     buffers_.resize(count_);
     in_use_.assign(count_, false);
     current_buffer_ = 0;
@@ -51,12 +51,12 @@ bool DmaBuffersManager::allocate(size_t buffer_size) {
     for (size_t i = 0; i < count_; ++i) {
         buffers_[i] = allocator_->allocate(buffer_size);
         if (buffers_[i].fd < 0) {
-            std::cerr << "Ошибка выделения DMA-buf буфера " << i << std::endl;
-            deallocate(); // Очистка в случае ошибки
+            std::cerr << "Error allocating DMA-buf buffer " << i << std::endl;
+            deallocate(); // Cleanup in case of error
             return false;
         }
         if (!allocator_->map(buffers_[i])) {
-            std::cerr << "Ошибка маппинга DMA-buf буфера " << i << std::endl;
+            std::cerr << "Error mapping DMA-buf buffer " << i << std::endl;
             deallocate();
             return false;
         }
@@ -93,18 +93,18 @@ int DmaBuffersManager::get_free_buffer_index() {
     for (size_t i = 0; i < count_; ++i) {
         size_t idx = (current_buffer_ + i) % count_;
         if (!in_use_[idx]) {
-            // Не инкрементируем current_buffer_ здесь, чтобы можно было "подсмотреть"
-            // свободный буфер, не занимая его.
+            // We don't increment current_buffer_ here, so we can "peek" at
+            // a free buffer without occupying it.
             return idx;
         }
     }
-    return -1; // Нет свободных буферов
+    return -1; // No free buffers
 }
 
 void DmaBuffersManager::mark_in_use(size_t index) {
     if (index < count_) {
         in_use_[index] = true;
-        // Обновляем current_buffer_ только когда буфер действительно используется
+        // Update current_buffer_ only when the buffer is actually used
         if (index == (current_buffer_ % count_)) {
              current_buffer_ = (index + 1) % count_;
         }

@@ -10,11 +10,11 @@
 #include <cstdlib>
 #include <vector>
 
-// Используем DMA heaps для Raspberry Pi
+// Use DMA heaps for Raspberry Pi
 #include <linux/dma-buf.h>
 #include <linux/types.h>
 
-// Определения DMA heap API (если не найдены в системе)
+// DMA heap API definitions (if not found in the system)
 struct dma_heap_allocation_data {
     __u64 len;
     __u32 fd;
@@ -24,7 +24,7 @@ struct dma_heap_allocation_data {
 
 #define DMA_HEAP_IOCTL_ALLOC _IOWR('H', 0x0, struct dma_heap_allocation_data)
 
-// Для DMA_BUF_SET_NAME используем системное определение или совместимую версию
+// For DMA_BUF_SET_NAME, use the system definition or a compatible version
 #ifndef DMA_BUF_SET_NAME_COMPAT
 struct dma_buf_set_name_compat {
     __u64 name_ptr;
@@ -39,23 +39,23 @@ public:
     bool supported = false;
 
     bool initialize(std::string_view device_path) {
-        // Список DMA heap устройств для Raspberry Pi (по приоритету)
+        // List of DMA heap devices for Raspberry Pi (by priority)
         const std::vector<const char*> heap_names = {
             "/dev/dma_heap/vidbuf_cached",  // Pi 5
-            "/dev/dma_heap/linux,cma"       // Pi 4 и ниже
+            "/dev/dma_heap/linux,cma"       // Pi 4 and below
         };
 
         for (const char* name : heap_names) {
             dma_heap_fd = open(name, O_RDWR | O_CLOEXEC);
             if (dma_heap_fd >= 0) {
-                std::cout << "Открыт DMA heap: " << name << std::endl;
+                std::cout << "Opened DMA heap: " << name << std::endl;
                 supported = true;
                 return true;
             }
-            std::cout << "Не удалось открыть " << name << ": " << strerror(errno) << std::endl;
+            std::cout << "Failed to open " << name << ": " << strerror(errno) << std::endl;
         }
 
-        std::cerr << "Не удалось открыть ни один DMA heap" << std::endl;
+        std::cerr << "Failed to open any DMA heap" << std::endl;
         supported = false;
         return false;
     }
@@ -70,17 +70,17 @@ public:
         DmaBufAllocator::DmaBufInfo buf_info = {};
         
         if (!supported) {
-            std::cerr << "DMA-buf аллокатор не инициализирован" << std::endl;
+            std::cerr << "DMA-buf allocator not initialized" << std::endl;
             return buf_info;
         }
 
-        // Проверяем размер на разумные пределы
+        // Check size for reasonable limits
         if (size == 0 || size > UINT32_MAX) {
-            std::cerr << "Некорректный размер буфера: " << size << " (макс: " << UINT32_MAX << ")" << std::endl;
+            std::cerr << "Invalid buffer size: " << size << " (max: " << UINT32_MAX << ")" << std::endl;
             return buf_info;
         }
 
-        // Аллокация через DMA heap
+        // Allocation via DMA heap
         struct dma_heap_allocation_data heap_data = {};
         heap_data.len = size;
         heap_data.fd_flags = O_RDWR | O_CLOEXEC;
@@ -88,44 +88,44 @@ public:
 
         int ret = ioctl(dma_heap_fd, DMA_HEAP_IOCTL_ALLOC, &heap_data);
         if (ret < 0) {
-            std::cerr << "Ошибка DMA_HEAP_IOCTL_ALLOC: " << strerror(errno) << std::endl;
+            std::cerr << "DMA_HEAP_IOCTL_ALLOC error: " << strerror(errno) << std::endl;
             return buf_info;
         }
 
         int dmabuf_fd = heap_data.fd;
         
-        // Получаем фактический размер буфера
+        // Get the actual buffer size
         struct stat stat_buf;
         size_t actual_size = size;
         if (fstat(dmabuf_fd, &stat_buf) == 0) {
             actual_size = stat_buf.st_size;
         }
         
-        // Устанавливаем имя буфера для отладки (опционально)
+        // Set buffer name for debugging (optional)
         std::string name = "v4l2_decoder_buffer_" + std::to_string(actual_size);
         
-        // Пытаемся установить имя, но игнорируем ошибки так как это не критично
+        // Try to set the name, but ignore errors as it's not critical
         struct dma_buf_set_name_compat name_data = {};
         name_data.name_ptr = reinterpret_cast<__u64>(name.c_str());
         name_data.name_len = name.length();
         
         ret = ioctl(dmabuf_fd, DMA_BUF_SET_NAME_COMPAT, &name_data);
         if (ret < 0) {
-            // Пробуем системный DMA_BUF_SET_NAME если есть
+            // Try the system DMA_BUF_SET_NAME if available
             ret = ioctl(dmabuf_fd, _IOW('b', 1, __u64), reinterpret_cast<__u64>(name.c_str()));
             if (ret < 0) {
-                // Не критично, продолжаем без установки имени
-                std::cout << "Предупреждение: не удалось установить имя DMA-buf (игнорируем)" << std::endl;
+                // Not critical, continue without setting the name
+                std::cout << "Warning: failed to set DMA-buf name (ignoring)" << std::endl;
             }
         }
 
         buf_info.fd = dmabuf_fd;
-        buf_info.size = actual_size;  // Используем фактический размер!
-        buf_info.mapped_addr = nullptr; // Будет установлен в map()
-        buf_info.handle = 0; // Не используется в DMA heaps
+        buf_info.size = actual_size;  // Use the actual size!
+        buf_info.mapped_addr = nullptr; // Will be set in map()
+        buf_info.handle = 0; // Not used with DMA heaps
 
-        std::cout << "Выделен DMA-buf: fd=" << buf_info.fd 
-                  << ", size=" << buf_info.size << " bytes (запрошено " << size << ")" << std::endl;
+        std::cout << "Allocated DMA-buf: fd=" << buf_info.fd 
+                  << ", size=" << buf_info.size << " bytes (requested " << size << ")" << std::endl;
         
         return buf_info;
     }
@@ -145,7 +145,7 @@ public:
                          MAP_SHARED, buf_info.fd, 0);
         
         if (addr == MAP_FAILED) {
-            std::cerr << "Ошибка маппинга DMA-buf: " << strerror(errno) << std::endl;
+            std::cerr << "Error mapping DMA-buf: " << strerror(errno) << std::endl;
             return false;
         }
 
@@ -161,7 +161,7 @@ public:
     }
 };
 
-// Реализация публичного интерфейса
+// Public interface implementation
 DmaBufAllocator::DmaBufAllocator() : impl_(std::make_unique<Impl>()) {}
 
 DmaBufAllocator::~DmaBufAllocator() = default;

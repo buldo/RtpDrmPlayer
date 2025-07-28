@@ -122,7 +122,7 @@ public:
                     std::cout << "🔄 V4L2_EVENT_SOURCE_CHANGE received" << std::endl;
                     if (ev.u.src_change.changes & V4L2_EVENT_SRC_CH_RESOLUTION) {
                         std::cout << "  📐 Resolution change, IGNORE reset" << std::endl;
-                        // needs_reset = true; // Отключено по запросу
+                        // needs_reset = true; // Disabled by request
                     }
                     break;
                     
@@ -150,7 +150,7 @@ public:
         struct v4l2_format fmt_out = {};
         fmt_out.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
         if (!device_->get_format(fmt_out)) {
-            std::cerr << "❌ ОШИБКА: Не удалось получить выходной формат после настройки" << std::endl;
+            std::cerr << "❌ ERROR: Failed to get output format after setup" << std::endl;
             return false;
         }
         
@@ -179,21 +179,21 @@ public:
     [[nodiscard]] bool setDisplay() {
         display_type = V4L2Decoder::DisplayType::DRM_DMABUF;
         
-        std::cout << "Настройка дисплея: TRUE Zero-Copy DMA-buf" << std::endl;
+        std::cout << "Setting up display: TRUE Zero-Copy DMA-buf" << std::endl;
         
         display_manager = std::make_unique<DrmDmaBufDisplayManager>();
         
-        // Если frame_width и frame_height уже известны, инициализируем дисплей
+        // If frame_width and frame_height are already known, initialize the display
         if (frame_width > 0 && frame_height > 0) {
             if (!display_manager->initialize(frame_width, frame_height)) {
-                std::cerr << "Ошибка инициализации дисплея" << std::endl;
+                std::cerr << "Display initialization error" << std::endl;
                 display_manager.reset();
                 return false;
             }
-            std::cout << "Дисплей инициализирован: " << display_manager->getDisplayInfo() << std::endl;
+            std::cout << "Display initialized: " << display_manager->getDisplayInfo() << std::endl;
         }
         
-        // Обновляем display_manager в frame_processor
+        // Update display_manager in frame_processor
         if (frame_processor_) {
             frame_processor_->setDisplayManager(display_manager.get());
         }
@@ -206,22 +206,22 @@ public:
     }
 
     [[nodiscard]] bool setupDmaBufs() {
-        // Полностью DMA-buf подход
+        // Fully DMA-buf approach
         
         zero_copy_initialized.assign(output_buffers_->count(), false);
         
-        // Получаем размеры буферов от V4L2
+        // Get buffer sizes from V4L2
         struct v4l2_format fmt_out = {};
         fmt_out.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
         if (!device_->get_format(fmt_out)) {
-            std::cerr << "Ошибка получения output формата" << std::endl;
+            std::cerr << "Error getting output format" << std::endl;
             return false;
         }
         
         struct v4l2_format fmt_cap = {};
         fmt_cap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
         if (!device_->get_format(fmt_cap)) {
-            std::cerr << "Ошибка получения capture формата" << std::endl;
+            std::cerr << "Error getting capture format" << std::endl;
             return false;
         }
         
@@ -232,13 +232,13 @@ public:
             input_buffer_size = config_.default_input_buffer_size;
         }
         if (output_buffer_size == 0) {
-            output_buffer_size = config_.width * config_.height * 3 / 2; // Для YUV420
+            output_buffer_size = config_.width * config_.height * 3 / 2; // For YUV420
         }
         
-        std::cout << "Размеры буферов: input=" << input_buffer_size 
+        std::cout << "Buffer sizes: input=" << input_buffer_size 
                   << ", output=" << output_buffer_size << std::endl;
 
-        // 1. ВХОДНЫЕ буферы - DMA-buf
+        // 1. INPUT buffers - DMA-buf
         if (!input_buffers_->allocate(input_buffer_size)) {
             return false;
         }
@@ -246,7 +246,7 @@ public:
             return false;
         }
         
-        // 2. ВЫХОДНЫЕ буферы - DMA-buf
+        // 2. OUTPUT buffers - DMA-buf
         if (!output_buffers_->allocate(output_buffer_size)) {
             return false;
         }
@@ -264,8 +264,8 @@ public:
             return false;
         }
         
-        std::cout << "DMA-buf буферы настроены: " << input_buffers_->count() << " входных, " 
-                  << output_buffers_->count() << " выходных" << std::endl;
+        std::cout << "DMA-buf buffers configured: " << input_buffers_->count() << " input, " 
+                  << output_buffers_->count() << " output" << std::endl;
         return true;
     }
 
@@ -277,11 +277,11 @@ public:
 
 private:
     [[nodiscard]] bool queueOutputBuffers() {
-        std::cout << "Постановка в очередь " << output_buffers_->count() << " выходных буферов..." << std::endl;
+        std::cout << "Queuing " << output_buffers_->count() << " output buffers..." << std::endl;
 
         for (unsigned int i = 0; i < output_buffers_->count(); ++i) {
             if (!queueOutputBuffer(i)) {
-                std::cerr << "❌ Ошибка постановки в очередь буфера " << i << std::endl;
+                std::cerr << "❌ Error queuing buffer " << i << std::endl;
                 return false;
             }
         }
@@ -290,7 +290,7 @@ private:
 
     [[nodiscard]] bool queueOutputBuffer(unsigned int index) {
         if (index >= output_buffers_->count()) {
-            std::cerr << "❌ Недопустимый индекс буфера: " << index << std::endl;
+            std::cerr << "❌ Invalid buffer index: " << index << std::endl;
             return false;
         }
 
@@ -305,7 +305,7 @@ private:
         plane.length = output_buffers_->get_info(index).size;
 
         if (!device_->queue_buffer(buf)) {
-            std::cerr << "❌ VIDIOC_QBUF для буфера " << index << " не удалось" << std::endl;
+            std::cerr << "❌ VIDIOC_QBUF for buffer " << index << " failed" << std::endl;
             return false;
         }
         return true;
@@ -314,13 +314,13 @@ private:
     [[nodiscard]] bool enableStreaming() {
         // Enable output streaming first (input buffers)
         if (!device_->stream_on(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)) {
-            std::cerr << "❌ VIDIOC_STREAMON для входа не удалось" << std::endl;
+            std::cerr << "❌ VIDIOC_STREAMON for input failed" << std::endl;
             return false;
         }
 
         // Enable capture streaming (output buffers)
         if (!device_->stream_on(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-            std::cerr << "❌ VIDIOC_STREAMON для выхода не удалось" << std::endl;
+            std::cerr << "❌ VIDIOC_STREAMON for output failed" << std::endl;
 
             // Rollback input streaming on failure
             (void)device_->stream_off(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
@@ -337,48 +337,48 @@ public:
 
     [[nodiscard]] bool decodeData(const uint8_t* data, size_t size) {
         if (!data || size == 0) {
-            std::cerr << "❌ ОШИБКА: Недопустимые входные данные (data=" << (void*)data 
+            std::cerr << "❌ ERROR: Invalid input data (data=" << (void*)data 
                       << ", size=" << size << ")" << std::endl;
             return false;
         }
 
         if (!device_->is_open()) {
-            std::cerr << "❌ КРИТИЧЕСКАЯ ОШИБКА: Декодер не инициализирован" << std::endl;
+            std::cerr << "❌ CRITICAL ERROR: Decoder not initialized" << std::endl;
             return false;
         }
 
-        // Проверяем, не нужен ли сброс из-за V4L2 события
+        // Check if a reset is needed due to a V4L2 event
         if (needs_reset) {
-            std::cout << "🚀 Выполнение сброса из-за V4L2_EVENT_SOURCE_CHANGE..." << std::endl;
+            std::cout << "🚀 Performing reset due to V4L2_EVENT_SOURCE_CHANGE..." << std::endl;
             if (!resetBuffers()) {
-                std::cerr << "❌ Ошибка при сбросе буферов после изменения источника" << std::endl;
+                std::cerr << "❌ Error resetting buffers after source change" << std::endl;
                 return false;
             }
             if (!streaming_manager_->start()) {
-                std::cerr << "❌ Ошибка при перезапуске стриминга после сброса" << std::endl;
+                std::cerr << "❌ Error restarting streaming after reset" << std::endl;
                 return false;
             }
-            needs_reset = false; // Сбрасываем флаг
-            std::cout << "✅ Сброс и перезапуск стриминга выполнены успешно" << std::endl;
+            needs_reset = false; // Reset the flag
+            std::cout << "✅ Reset and streaming restart successful" << std::endl;
         }
 
-        // uvgRTP предоставляет полные кадры - обработка NAL не требуется.
-        // Декодер считается готовым, если он был инициализирован.
+        // uvgRTP provides full frames - NAL processing is not required.
+        // The decoder is considered ready if it has been initialized.
         if (!decoder_ready) {
             decoder_ready = true;
-            std::cout << "✅ Декодер готов к приему данных" << std::endl;
+            std::cout << "✅ Decoder is ready to receive data" << std::endl;
         }
 
-        // Запускаем стриминг, если еще не запущен
+        // Start streaming if not already active
         if (!streaming_manager_->is_active()) {
             if (!streaming_manager_->start()) {
-                std::cerr << "Ошибка запуска стриминга" << std::endl;
+                std::cerr << "Error starting streaming" << std::endl;
                 return false;
             }
-            std::cout << "🚀 Стриминг запущен" << std::endl;
+            std::cout << "🚀 Streaming started" << std::endl;
         }
 
-        // Освобождаем завершенные входные буферы
+        // Dequeue completed input buffers
         struct v4l2_buffer dq_buf_in = {};
         struct v4l2_plane dq_plane_in = {};
         dq_buf_in.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -392,29 +392,29 @@ public:
         int buffer_to_use = input_buffers_->get_free_buffer_index();
         
         if (buffer_to_use == -1) {
-            // Если нет свободных буферов, попробуем подождать один с небольшим таймаутом
+            // If no free buffers, try to wait for one with a short timeout
             if (device_->poll(POLLOUT | POLLERR, 20) && device_->is_ready_for_write()) {
                  if (device_->dequeue_buffer(dq_buf_in)) {
                     input_buffers_->mark_free(dq_buf_in.index);
                     buffer_to_use = dq_buf_in.index;
-                    std::cout << "✅ Освобожден входной буфер " << buffer_to_use << " после ожидания" << std::endl;
+                    std::cout << "✅ Freed input buffer " << buffer_to_use << " after waiting" << std::endl;
                 }
             }
         }
 
         if (buffer_to_use == -1) {
-            std::cerr << "❌ ОШИБКА: Нет свободных входных буферов!" << std::endl;
+            std::cerr << "❌ ERROR: No free input buffers!" << std::endl;
             return false;
         }
         
         // Validate buffer bounds
         if (buffer_to_use >= static_cast<int>(input_buffers_->count()) || buffer_to_use < 0) {
-            std::cerr << "❌ КРИТИЧЕСКАЯ ОШИБКА: Недопустимый индекс буфера: " << buffer_to_use << std::endl;
+            std::cerr << "❌ CRITICAL ERROR: Invalid buffer index: " << buffer_to_use << std::endl;
             return false;
         }
 
         if (!input_buffers_->get_info(buffer_to_use).mapped_addr) {
-            std::cerr << "❌ КРИТИЧЕСКАЯ ОШИБКА: Указатель буфера NULL для индекса " << buffer_to_use << std::endl;
+            std::cerr << "❌ CRITICAL ERROR: Buffer pointer is NULL for index " << buffer_to_use << std::endl;
             return false;
         }
 
@@ -422,14 +422,14 @@ public:
         struct dma_buf_sync sync_start = {};
         sync_start.flags = DMA_BUF_SYNC_START | DMA_BUF_SYNC_RW;
         if (ioctl(input_buffers_->get_info(buffer_to_use).fd, DMA_BUF_IOCTL_SYNC, &sync_start) < 0) {
-            std::cerr << "⚠️ ПРЕДУПРЕЖДЕНИЕ: Не удалось выполнить DMA_BUF_IOCTL_SYNC_START - "
-                      << strerror(errno) << " (код: " << errno << ")" << std::endl;
-            // Продолжаем, но это может привести к повреждению данных
+            std::cerr << "⚠️ WARNING: Failed to perform DMA_BUF_IOCTL_SYNC_START - "
+                      << strerror(errno) << " (code: " << errno << ")" << std::endl;
+            // Continue, but this might lead to data corruption
         }
 
         size_t chunk_size = std::min(size, input_buffers_->get_info(buffer_to_use).size);
         if (chunk_size == 0) {
-            std::cerr << "❌ ОШИБКА: Размер данных для копирования равен 0" << std::endl;
+            std::cerr << "❌ ERROR: Data size to copy is 0" << std::endl;
             return false;
         }
 
@@ -439,8 +439,8 @@ public:
         struct dma_buf_sync sync_end = {};
         sync_end.flags = DMA_BUF_SYNC_END | DMA_BUF_SYNC_RW;
         if (ioctl(input_buffers_->get_info(buffer_to_use).fd, DMA_BUF_IOCTL_SYNC, &sync_end) < 0) {
-            std::cerr << "⚠️ ПРЕДУПРЕЖДЕНИЕ: Не удалось выполнить DMA_BUF_IOCTL_SYNC_END - "
-                      << strerror(errno) << " (код: " << errno << ")" << std::endl;
+            std::cerr << "⚠️ WARNING: Failed to perform DMA_BUF_IOCTL_SYNC_END - "
+                      << strerror(errno) << " (code: " << errno << ")" << std::endl;
         }
 
         struct v4l2_buffer buf = {};
@@ -452,32 +452,32 @@ public:
         buf.length = 1;
         plane.m.fd = input_buffers_->get_info(buffer_to_use).fd;
         plane.bytesused = chunk_size;
-        plane.length = input_buffers_->get_info(buffer_to_use).size; // Указываем полный размер буфера
+        plane.length = input_buffers_->get_info(buffer_to_use).size; // Specify the full buffer size
         
         if (!device_->queue_buffer(buf)) {
-            std::cerr << "❌ ОШИБКА: Не удалось поставить буфер в очередь (буфер " << buffer_to_use 
+            std::cerr << "❌ ERROR: Failed to queue buffer (buffer " << buffer_to_use 
                       << ")" << std::endl;
             return false;
         }
         input_buffers_->mark_in_use(buffer_to_use);
 
-        // --- Извлекаем готовые кадры ---
+        // --- Dequeue ready frames ---
         if (!decoder_ready) {
-            std::cout << "⏭️ Данные отправлены, ожидание готовности декодера" << std::endl;
+            std::cout << "⏭️ Data sent, waiting for decoder to be ready" << std::endl;
             return true;
         }
 
         bool frames_processed;
         do {
             frames_processed = false;
-            if (!device_->poll(POLLIN | POLLPRI | POLLERR, 0)) { // Таймаут 0 для неблокирующей проверки
+            if (!device_->poll(POLLIN | POLLPRI | POLLERR, 0)) { // Timeout 0 for non-blocking check
                 break;
             }
 
             if (device_->has_event()) { handleV4L2Events(); }
             if (device_->has_error()) { 
                 std::cerr << "❌ POLLERR" << std::endl; 
-                needs_reset = true; // Устанавливаем флаг для сброса
+                needs_reset = true; // Set flag for reset
                 return false; 
             }
             
@@ -495,7 +495,7 @@ public:
                     }
                     frames_processed = true;
                 } else {
-                    // EAGAIN - это нормально, просто данных пока нет
+                    // EAGAIN is normal, just means no data yet
                     break;
                 }
             }
@@ -509,14 +509,14 @@ public:
             return false;
         }
         
-        std::cout << "🔄 Принудительная очистка буферов декодера..." << std::endl;
+        std::cout << "🔄 Forcing decoder buffer flush..." << std::endl;
 
-        // 1. Найти свободный входной буфер
+        // 1. Find a free input buffer
         int flush_buffer_idx = input_buffers_->get_free_buffer_index();
 
-        // 2. Если свободных нет, попытаться освободить один
+        // 2. If none are free, try to dequeue one
         if (flush_buffer_idx == -1) {
-            std::cout << "Нет свободных входных буферов, пытаемся освободить..." << std::endl;
+            std::cout << "No free input buffers, trying to dequeue one..." << std::endl;
             struct v4l2_buffer dq_buf = {};
             struct v4l2_plane dq_plane = {};
             dq_buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -527,14 +527,14 @@ public:
             if (device_->dequeue_buffer(dq_buf)) {
                 input_buffers_->mark_free(dq_buf.index);
                 flush_buffer_idx = dq_buf.index;
-                std::cout << "✅ Освобожден буфер " << flush_buffer_idx << std::endl;
+                std::cout << "✅ Dequeued buffer " << flush_buffer_idx << std::endl;
             } else {
-                std::cerr << "❌ Не удалось освободить входной буфер для flush" << std::endl;
+                std::cerr << "❌ Failed to dequeue an input buffer for flush" << std::endl;
                 return false;
             }
         }
         
-        // 3. Отправляем пустой буфер с флагом последнего для очистки декодера
+        // 3. Send an empty buffer with the LAST flag to flush the decoder
         struct v4l2_buffer buf = {};
         struct v4l2_plane plane = {};
         buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -542,17 +542,17 @@ public:
         buf.index = flush_buffer_idx;
         buf.m.planes = &plane;
         buf.length = 1;
-        buf.flags = V4L2_BUF_FLAG_LAST; // Флаг конца потока
+        buf.flags = V4L2_BUF_FLAG_LAST; // End of stream flag
         plane.m.fd = input_buffers_->get_info(flush_buffer_idx).fd;
-        plane.bytesused = 0; // Пустые данные для flush
+        plane.bytesused = 0; // Empty data for flush
         
         if (!device_->queue_buffer(buf)) {
-            std::cerr << "❌ Ошибка отправки flush буфера" << std::endl;
+            std::cerr << "❌ Error sending flush buffer" << std::endl;
             return false;
         }
-        input_buffers_->mark_in_use(flush_buffer_idx); // Помечаем буфер как используемый
+        input_buffers_->mark_in_use(flush_buffer_idx); // Mark buffer as in use
         
-        // Проверяем выходные кадры после flush
+        // Check for output frames after flush
         int attempts = 0;
         while (attempts < 20) {
             if (!device_->poll(POLLIN | POLLPRI | POLLERR, 50)) {
@@ -565,8 +565,8 @@ public:
             }
             
             if (device_->has_error()) {
-                std::cerr << "❌ POLLERR при flush" << std::endl;
-                return false; // Выходим с ошибкой
+                std::cerr << "❌ POLLERR during flush" << std::endl;
+                return false; // Exit with error
             }
             
             if (device_->is_ready_for_read()) {
@@ -580,35 +580,35 @@ public:
                 if (device_->dequeue_buffer(out_buf)) {
                     if (frame_processor_->processDecodedFrame(out_buf)) {
                          if (!requeueOutputBuffer(out_buf)) {
-                            std::cerr << "❌ Не удалось вернуть flush выходной буфер" << std::endl;
+                            std::cerr << "❌ Failed to requeue flush output buffer" << std::endl;
                         }
                     }
-                    attempts = 0; // Сброс счетчика при получении кадра
+                    attempts = 0; // Reset counter on frame receipt
                 } else {
                     attempts++;
                 }
             }
         }
         
-        std::cout << "✅ Очистка буферов завершена" << std::endl;
+        std::cout << "✅ Buffer flush completed" << std::endl;
         return true;
     }
 
     [[nodiscard]] bool resetBuffers() {
         if (!device_->is_open()) {
-            std::cerr << "❌ Декодер не инициализирован" << std::endl;
+            std::cerr << "❌ Decoder not initialized" << std::endl;
             return false;
         }
 
-        std::cout << "🔄 ПЕРЕЗАГРУЗКА: Полный сброс V4L2 буферов..." << std::endl;
+        std::cout << "🔄 RELOADING: Full reset of V4L2 buffers..." << std::endl;
 
-        // Останавливаем стриминг
+        // Stop streaming
         if (streaming_manager_ && streaming_manager_->is_active()) {
             streaming_manager_->stop();
         }
         streaming_manager_->set_inactive();
 
-        // Освобождаем буферы
+        // Release buffers on the device
         if (input_buffers_) {
             (void)input_buffers_->releaseOnDevice(*device_);
         }
@@ -624,7 +624,7 @@ public:
             input_buffers_->reset_usage();
         }
 
-        // КРИТИЧНО: Освобождаем старые DMA-buf буферы (входные и выходные)
+        // CRITICAL: Deallocate old DMA-buf buffers (input and output)
         if (input_buffers_) {
             input_buffers_->deallocate();
         }
@@ -632,15 +632,15 @@ public:
             output_buffers_->deallocate();
         }
 
-        // Сбрасываем состояние zero-copy ПОСЛЕ очистки буферов
+        // Reset zero-copy state AFTER clearing buffers
         zero_copy_initialized.clear();
 
-        // Очищаем MMAP буферы для входных данных - больше не нужно
+        // Clearing MMAP buffers for input data - no longer needed
         /*
         for (auto& mmap_buf : input_mmap_buffers) {
             if (mmap_buf.ptr && mmap_buf.ptr != MAP_FAILED) {
                 if (munmap(mmap_buf.ptr, mmap_buf.size) < 0) {
-                    std::cerr << "❌ Ошибка munmap в resetBuffers: " << strerror(errno) << std::endl;
+                    std::cerr << "❌ munmap error in resetBuffers: " << strerror(errno) << std::endl;
                 }
                 mmap_buf.ptr = nullptr;
                 mmap_buf.size = 0;
@@ -649,16 +649,16 @@ public:
         input_mmap_buffers.clear();
         */
 
-        // Ждем дольше для освобождения DMA-buf памяти
+        // Wait longer for DMA-buf memory to be freed
         usleep(200000); // 200ms
 
-        // Пересоздаем буферы
+        // Recreate buffers
         if (!setupBuffers()) {
-            std::cerr << "❌ Ошибка пересоздания буферов" << std::endl;
+            std::cerr << "❌ Error recreating buffers" << std::endl;
             return false;
         }
 
-        std::cout << "✅ Буферы успешно сброшены и пересозданы" << std::endl;
+        std::cout << "✅ Buffers successfully reset and recreated" << std::endl;
         return true;
     }
 
@@ -671,7 +671,7 @@ private:
         requeue_plane.length = output_buffers_->get_info(out_buf.index).size;
 
         if (!device_->queue_buffer(requeue_buf)) {
-            std::cerr << "❌ КРИТИЧЕСКАЯ ОШИБКА: Не удалось вернуть буфер " << out_buf.index << std::endl;
+            std::cerr << "❌ CRITICAL ERROR: Failed to requeue buffer " << out_buf.index << std::endl;
             return false;
         }
         return true;
@@ -679,7 +679,7 @@ private:
 
 public:
     void cleanup() noexcept {
-        std::cout << "Завершение работы V4L2 декодера..." << std::endl;
+        std::cout << "Shutting down V4L2 decoder..." << std::endl;
         
         if (!device_->is_open()) return;
         
@@ -696,9 +696,9 @@ public:
             (void)output_buffers_->releaseOnDevice(*device_);
         }
 
-        // Очищаем DMA-buf буферы (входные и выходные)
+        // Deallocate DMA-buf buffers (input and output)
         if (dmabuf_allocator) {
-            std::cout << "Освобождение DMA-buf буферов..." << std::endl;
+            std::cout << "Deallocating DMA-buf buffers..." << std::endl;
             if (input_buffers_) {
                 input_buffers_->deallocate();
             }
@@ -722,12 +722,12 @@ public:
         frame_width = 0;
         frame_height = 0;
 
-        std::cout << "V4L2 декодер завершен. Декодировано кадров: " << decoded_frame_count << std::endl;
+        std::cout << "V4L2 decoder shut down. Decoded frames: " << decoded_frame_count << std::endl;
     }
 };
 
 
-// Реализация интерфейса V4L2Decoder
+// V4L2Decoder interface implementation
 V4L2Decoder::V4L2Decoder() : impl(std::make_unique<V4L2DecoderImpl>()) {}
 V4L2Decoder::~V4L2Decoder() = default;
 

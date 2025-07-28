@@ -1,6 +1,6 @@
 #pragma once
 
-#include "v4l2_decoder.h" // Для V4L2Decoder::DisplayType
+#include "v4l2_decoder.h" // For V4L2Decoder::DisplayType
 #include <linux/videodev2.h>
 #include <memory>
 #include <vector>
@@ -25,10 +25,10 @@ public:
         ZeroCopySetupCallback cb = nullptr
     );
 
-    // Возвращает true, если буфер должен быть повторно поставлен в очередь
+    // Returns true if the buffer should be re-queued
     [[nodiscard]] bool processDecodedFrame(const v4l2_buffer& out_buf);
 
-    // Обновление указателя на DisplayManager
+    // Update the DisplayManager pointer
     void setDisplayManager(DrmDmaBufDisplayManager* display_manager);
 
 private:

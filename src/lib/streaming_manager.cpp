@@ -23,7 +23,7 @@ void StreamingManager::set_inactive() {
 
 bool StreamingManager::start() {
     if (state_ == State::ACTIVE) {
-        std::cout << "Стриминг уже активен" << std::endl;
+        std::cout << "Streaming is already active" << std::endl;
         return true;
     }
 
@@ -40,7 +40,7 @@ bool StreamingManager::start() {
     }
 
     state_ = State::ACTIVE;
-    std::cout << "✅ Стриминг успешно запущен" << std::endl;
+    std::cout << "✅ Streaming started successfully" << std::endl;
     return true;
 }
 
@@ -58,16 +58,16 @@ bool StreamingManager::stop() {
 
     usleep(10000); // 10ms
 
-    std::cout << "✅ Стриминг остановлен" << std::endl;
+    std::cout << "✅ Streaming stopped" << std::endl;
     return true;
 }
 
 bool StreamingManager::queueOutputBuffers() {
-    std::cout << "Постановка в очередь " << output_buffers_.count() << " выходных буферов..." << std::endl;
+    std::cout << "Queuing " << output_buffers_.count() << " output buffers..." << std::endl;
 
     for (unsigned int i = 0; i < output_buffers_.count(); ++i) {
         if (!queueOutputBuffer(i)) {
-            std::cerr << "❌ Ошибка постановки в очередь буфера " << i << std::endl;
+            std::cerr << "❌ Error queuing buffer " << i << std::endl;
             return false;
         }
     }
@@ -76,7 +76,7 @@ bool StreamingManager::queueOutputBuffers() {
 
 bool StreamingManager::queueOutputBuffer(unsigned int index) {
     if (index >= output_buffers_.count()) {
-        std::cerr << "❌ Недопустимый индекс буфера: " << index << std::endl;
+        std::cerr << "❌ Invalid buffer index: " << index << std::endl;
         return false;
     }
 
@@ -91,7 +91,7 @@ bool StreamingManager::queueOutputBuffer(unsigned int index) {
     plane.length = output_buffers_.get_info(index).size;
 
     if (!device_.queue_buffer(buf)) {
-        std::cerr << "❌ VIDIOC_QBUF для буфера " << index << " не удалось" << std::endl;
+        std::cerr << "❌ VIDIOC_QBUF for buffer " << index << " failed" << std::endl;
         return false;
     }
     return true;
@@ -99,12 +99,12 @@ bool StreamingManager::queueOutputBuffer(unsigned int index) {
 
 bool StreamingManager::enableStreaming() {
     if (!device_.stream_on(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)) {
-        std::cerr << "❌ VIDIOC_STREAMON для входа не удалось" << std::endl;
+        std::cerr << "❌ VIDIOC_STREAMON for input failed" << std::endl;
         return false;
     }
 
     if (!device_.stream_on(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-        std::cerr << "❌ VIDIOC_STREAMON для выхода не удалось" << std::endl;
+        std::cerr << "❌ VIDIOC_STREAMON for output failed" << std::endl;
         (void)device_.stream_off(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
         return false;
     }

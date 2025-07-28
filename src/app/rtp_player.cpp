@@ -1,6 +1,6 @@
 /**
  * @file rtp_player.cpp
- * @brief RTP Player для приема и декодирования H.264 RTP потока в реальном времени
+ * @brief RTP Player for receiving and decoding H.264 RTP stream in real-time
  */
 
 #include "v4l2_decoder.h"
@@ -31,70 +31,70 @@ public:
     }
 
     bool initialize() {
-        // Создаем конфигурацию
+        // Create configuration
         DecoderConfig config;
         config.device_path = device_path_;
-        // Другие параметры остаются по умолчанию
+        // Other parameters remain default
 
-        // Инициализируем V4L2 декодер
+        // Initialize V4L2 decoder
         decoder_ = std::make_unique<V4L2Decoder>();
         if (!decoder_->initialize(config)) {
-            std::cerr << "Ошибка инициализации V4L2 декодера" << std::endl;
+            std::cerr << "Error initializing V4L2 decoder" << std::endl;
             return false;
         }
 
-        // Настраиваем отображение
+        // Configure display
         if (!decoder_->setDisplay()) {
-            std::cerr << "Ошибка настройки дисплея" << std::endl;
+            std::cerr << "Error configuring display" << std::endl;
             return false;
         }
 
-        // Инициализируем RTP приёмник
+        // Initialize RTP receiver
         rtp_receiver_ = std::make_unique<UvgRTPReceiver>(local_ip_, local_port_);
         if (!rtp_receiver_->initialize()) {
-            std::cerr << "Ошибка инициализации RTP приёмника" << std::endl;
+            std::cerr << "Error initializing RTP receiver" << std::endl;
             return false;
         }
 
-        // Устанавливаем callback для обработки кадров
+        // Set callback for frame processing
         rtp_receiver_->setFrameCallback([this](std::unique_ptr<H264Frame> frame) {
             this->onFrameReceived(std::move(frame));
         });
 
-        std::cout << "RTP Player инициализирован: " << local_ip_ << ":" << local_port_ << std::endl;
+        std::cout << "RTP Player initialized: " << local_ip_ << ":" << local_port_ << std::endl;
         return true;
     }
 
     void start() {
         if (!rtp_receiver_) {
-            std::cerr << "RTP приёмник не инициализирован" << std::endl;
+            std::cerr << "RTP receiver not initialized" << std::endl;
             return;
         }
 
         running_ = true;
         
-        // Запускаем поток декодирования
+        // Start the decoding thread
         decoder_thread_ = std::thread(&RTPPlayer::decoderLoop, this);
 
-        // Устанавливаем real-time приоритет для потока декодера
+        // Set real-time priority for the decoder thread
         sched_param sch_params;
         sch_params.sched_priority = sched_get_priority_max(SCHED_FIFO);
         if (pthread_setschedparam(decoder_thread_.native_handle(), SCHED_FIFO, &sch_params) != 0) {
-            std::cerr << "⚠️ ПРЕДУПРЕЖДЕНИЕ: Не удалось установить real-time приоритет для потока декодера. "
-                      << "Запустите с sudo для лучшей производительности. Ошибка: " << strerror(errno) << std::endl;
+            std::cerr << "⚠️ WARNING: Failed to set real-time priority for the decoder thread. "
+                      << "Run with sudo for better performance. Error: " << strerror(errno) << std::endl;
         } else {
-            std::cout << "✅ Установлен real-time приоритет (SCHED_FIFO) для потока декодера." << std::endl;
+            std::cout << "✅ Real-time priority (SCHED_FIFO) set for the decoder thread." << std::endl;
         }
         
-        // Запускаем RTP приёмник
+        // Start the RTP receiver
         if (!rtp_receiver_->start()) {
-            std::cerr << "Ошибка запуска RTP приёмника" << std::endl;
+            std::cerr << "Error starting RTP receiver" << std::endl;
             running_ = false;
             return;
         }
         
-        std::cout << "RTP Player запущен, ожидание H.264 данных на " << local_ip_ << ":" << local_port_ << std::endl;
-        std::cout << "Нажмите Enter для остановки..." << std::endl;
+        std::cout << "RTP Player started, waiting for H.264 data on " << local_ip_ << ":" << local_port_ << std::endl;
+        std::cout << "Press Enter to stop..." << std::endl;
         std::cin.get();
         
         stop();
@@ -103,22 +103,22 @@ public:
     void stop() {
         running_ = false;
         
-        // Останавливаем RTP приёмник
+        // Stop the RTP receiver
         if (rtp_receiver_) {
             rtp_receiver_->stop();
         }
         
-        // Сигнализируем декодеру о завершении
+        // Signal the decoder to terminate
         frame_condition_.notify_all();
         
         if (decoder_thread_.joinable()) {
             decoder_thread_.join();
         }
         
-        std::cout << "RTP Player остановлен" << std::endl;
+        std::cout << "RTP Player stopped" << std::endl;
     }
 
-    // Статистика
+    // Statistics
     int getDecodedFrames() const { return decoded_frames_; }
 
 private:
@@ -127,7 +127,7 @@ private:
             return;
         }
 
-        // Проверяем наличие SPS/PPS в потоке, если еще не было
+        // Check for SPS/PPS in the stream if not already found
         if (!has_sps_) {
             const auto& data = frame->data;
             for (size_t i = 0; i + 3 < data.size(); ) {
@@ -143,7 +143,7 @@ private:
                     if (nalu_header_pos < data.size()) {
                         uint8_t nalu_type = data[nalu_header_pos] & 0x1F;
                         if (nalu_type == 7) { // SPS
-                            std::cout << "✅ SPS кадр получен (NALU type 7), декодер готов к работе!" << std::endl;
+                            std::cout << "✅ SPS frame received (NALU type 7), decoder is ready to work!" << std::endl;
                             has_sps_ = true;
                             break; 
                         }
@@ -158,7 +158,7 @@ private:
         {
             std::lock_guard<std::mutex> lock(frame_mutex_);
             if (frame_queue_.size() >= MAX_QUEUE_SIZE) {
-                frame_queue_.pop(); // Удаляем самый старый кадр, если очередь заполнена
+                frame_queue_.pop(); // Remove the oldest frame if the queue is full
             }
             frame_queue_.push(std::move(frame));
         }
@@ -167,18 +167,18 @@ private:
     }
 
     void decoderLoop() {
-        std::cout << "Запуск цикла декодирования с буферизацией (размер очереди: " << MAX_QUEUE_SIZE << ")..." << std::endl;
+        std::cout << "Starting decoding loop with buffering (queue size: " << MAX_QUEUE_SIZE << ")..." << std::endl;
         
-        // Ожидаем первый SPS кадр
+        // Wait for the first SPS frame
         while (running_ && !has_sps_) {
-            std::cout << "⏳ Ожидание SPS кадра..." << std::endl;
+            std::cout << "⏳ Waiting for SPS frame..." << std::endl;
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
         while (running_) {
             std::unique_ptr<H264Frame> frame_to_decode;
             
-            // Ждем новый кадр
+            // Wait for a new frame
             {
                 std::unique_lock<std::mutex> lock(frame_mutex_);
                 frame_condition_.wait(lock, [this] { return !frame_queue_.empty() || !running_; });
@@ -187,7 +187,7 @@ private:
                     break;
                 }
                 
-                // Забираем кадр из очереди
+                // Take a frame from the queue
                 frame_to_decode = std::move(frame_queue_.front());
                 frame_queue_.pop();
             }
@@ -201,57 +201,57 @@ private:
                     decoded_frames_++;
                     
                     if (decoded_frames_ == 1) {
-                         std::cout << "✅ Первый кадр успешно декодирован и отображен!" << std::endl;
+                         std::cout << "✅ First frame successfully decoded and displayed!" << std::endl;
                     } else if (decoded_frames_ % 100 == 0) {
-                        std::cout << "✅ Декодировано " << decoded_frames_ << " кадров" << std::endl;
+                        std::cout << "✅ Decoded " << decoded_frames_ << " frames" << std::endl;
                     }
                 } else {
-                    std::cout << "❌ Ошибка декодирования кадра (" << frame_to_decode->data.size() << " байт)" << std::endl;
+                    std::cout << "❌ Error decoding frame (" << frame_to_decode->data.size() << " bytes)" << std::endl;
                 }
                 
             } catch (const std::exception& e) {
-                std::cerr << "Критическая ошибка в цикле декодирования: " << e.what() << std::endl;
+                std::cerr << "Critical error in decoding loop: " << e.what() << std::endl;
             }
         }
         
-        std::cout << "Цикл декодирования завершен" << std::endl;
+        std::cout << "Decoding loop finished" << std::endl;
     }
     
-    // Конфигурация
+    // Configuration
     std::string device_path_;
     std::string local_ip_;
     uint16_t local_port_;
     
-    // Компоненты
+    // Components
     std::unique_ptr<V4L2Decoder> decoder_;
     std::unique_ptr<UvgRTPReceiver> rtp_receiver_;
     
-    // Потоки
+    // Threads
     std::thread decoder_thread_;
     std::atomic<bool> running_;
     
-    // Очередь кадров с ограниченным размером для сглаживания
+    // Frame queue with limited size for smoothing
     static constexpr size_t MAX_QUEUE_SIZE = 5;
     std::queue<std::unique_ptr<H264Frame>> frame_queue_;
     std::mutex frame_mutex_;
     std::condition_variable frame_condition_;
     
-    // Статистика
+    // Statistics
     std::atomic<int> decoded_frames_;
     std::atomic<bool> has_sps_;
 };
 
 void printUsage(const char* program_name) {
-    std::cout << "RTP Player - прием и декодирование H.264 RTP потока в реальном времени\n\n";
-    std::cout << "Использование: " << program_name << " [опции]\n\n";
-    std::cout << "Опции:\n";
-    std::cout << "  -d, --device <device>   V4L2 устройство (по умолчанию: /dev/video10)\n";
-    std::cout << "  -i, --ip <ip>          Локальный IP для прослушивания (по умолчанию: 0.0.0.0)\n";
-    std::cout << "  -p, --port <port>      Локальный порт для RTP (по умолчанию: 5600)\n";
-    std::cout << "  -h, --help             Показать эту справку\n\n";
-    std::cout << "Примеры:\n";
-    std::cout << "  " << program_name << " -p 5600                    # Слушать на порту 5600\n";
-    std::cout << "  " << program_name << " -i 192.168.1.100 -p 8080  # Слушать на конкретном IP и порту\n";
+    std::cout << "RTP Player - real-time H.264 RTP stream reception and decoding\n\n";
+    std::cout << "Usage: " << program_name << " [options]\n\n";
+    std::cout << "Options:\n";
+    std::cout << "  -d, --device <device>   V4L2 device (default: /dev/video10)\n";
+    std::cout << "  -i, --ip <ip>          Local IP to listen on (default: 0.0.0.0)\n";
+    std::cout << "  -p, --port <port>      Local port for RTP (default: 5600)\n";
+    std::cout << "  -h, --help             Show this help\n\n";
+    std::cout << "Examples:\n";
+    std::cout << "  " << program_name << " -p 5600                    # Listen on port 5600\n";
+    std::cout << "  " << program_name << " -i 192.168.1.100 -p 8080  # Listen on a specific IP and port\n";
 }
 
 int main(int argc, char* argv[]) {
@@ -259,7 +259,7 @@ int main(int argc, char* argv[]) {
     std::string local_ip = "0.0.0.0";
     uint16_t local_port = 5600;
     
-    // Парсинг аргументов командной строки
+    // Parse command line arguments
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         
@@ -271,7 +271,7 @@ int main(int argc, char* argv[]) {
             if (i + 1 < argc) {
                 device_path = argv[++i];
             } else {
-                std::cerr << "Ошибка: опция " << arg << " требует значения\n";
+                std::cerr << "Error: option " << arg << " requires a value\n";
                 return 1;
             }
         }
@@ -279,7 +279,7 @@ int main(int argc, char* argv[]) {
             if (i + 1 < argc) {
                 local_ip = argv[++i];
             } else {
-                std::cerr << "Ошибка: опция " << arg << " требует значения\n";
+                std::cerr << "Error: option " << arg << " requires a value\n";
                 return 1;
             }
         }
@@ -287,36 +287,36 @@ int main(int argc, char* argv[]) {
             if (i + 1 < argc) {
                 local_port = static_cast<uint16_t>(std::stoi(argv[++i]));
             } else {
-                std::cerr << "Ошибка: опция " << arg << " требует значения\n";
+                std::cerr << "Error: option " << arg << " requires a value\n";
                 return 1;
             }
         }
         else {
-            std::cerr << "Неизвестная опция: " << arg << "\n";
+            std::cerr << "Unknown option: " << arg << "\n";
             printUsage(argv[0]);
             return 1;
         }
     }
     
-    std::cout << "\n=== RTP Player для H.264 потока ===" << std::endl;
-    std::cout << "V4L2 устройство: " << device_path << std::endl;
-    std::cout << "Слушаем RTP на: " << local_ip << ":" << local_port << std::endl;
+    std::cout << "\n=== RTP Player for H.264 stream ===" << std::endl;
+    std::cout << "V4L2 device: " << device_path << std::endl;
+    std::cout << "Listening for RTP on: " << local_ip << ":" << local_port << std::endl;
     std::cout << "=====================================" << std::endl << std::endl;
     
     try {
         RTPPlayer player(device_path, local_ip, local_port);
         
         if (!player.initialize()) {
-            std::cerr << "Ошибка инициализации RTP Player" << std::endl;
+            std::cerr << "RTP Player initialization failed" << std::endl;
             return 1;
         }
         
         player.start();
         
-        std::cout << "Декодировано кадров: " << player.getDecodedFrames() << std::endl;
+        std::cout << "Decoded frames: " << player.getDecodedFrames() << std::endl;
         
     } catch (const std::exception& e) {
-        std::cerr << "Исключение: " << e.what() << std::endl;
+        std::cerr << "Exception: " << e.what() << std::endl;
         return 1;
     }
     

@@ -22,13 +22,13 @@ public:
     [[nodiscard]] const DmaBufAllocator::DmaBufInfo& get_info(size_t index) const;
     [[nodiscard]] DmaBufAllocator::DmaBufInfo& get_info(size_t index);
 
-    // Методы для управления состоянием буферов
+    // Methods for managing buffer state
     [[nodiscard]] int get_free_buffer_index();
     void mark_in_use(size_t index);
     void mark_free(size_t index);
     void reset_usage();
 
-    // Методы для взаимодействия с V4L2 устройством
+    // Methods for interacting with the V4L2 device
     [[nodiscard]] bool requestOnDevice(V4L2Device& device);
     [[nodiscard]] bool releaseOnDevice(V4L2Device& device);
 

@@ -7,17 +7,17 @@
 
 /**
  * @class V4L2Device
- * @brief Инкапсулирует низкоуровневое взаимодействие с V4L2 устройством.
+ * @brief Encapsulates low-level interaction with a V4L2 device.
  *
- * Этот класс предоставляет тонкую оболочку вокруг ioctl вызовов для V4L2,
- * управляя файловым дескриптором и выполняя основные операции с устройством.
+ * This class provides a thin wrapper around ioctl calls for V4L2,
+ * managing the file descriptor and performing basic device operations.
  */
 class V4L2Device {
 public:
     V4L2Device();
     ~V4L2Device();
 
-    // Запрещаем копирование и присваивание
+    // Disallow copying and assignment
     V4L2Device(const V4L2Device&) = delete;
     V4L2Device& operator=(const V4L2Device&) = delete;
 

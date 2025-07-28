@@ -157,11 +157,11 @@ public:
         }
         
         if (!encoder) {
-            std::cerr << "Ошибка получения энкодера" << std::endl;
+            std::cerr << "Error getting encoder" << std::endl;
             return false;
         }
         
-        // Получаем CRTC
+        // Get CRTC
         if (encoder->crtc_id) {
             crtc = drmModeGetCrtc(drm_fd, encoder->crtc_id);
             crtc_id = encoder->crtc_id;
@@ -238,7 +238,7 @@ public:
         uint32_t fb_id = 0;
         if (drmModeAddFB2(drm_fd, w, h, DRM_FORMAT_YUV420,
                           handles, pitches, offsets, &fb_id, 0) < 0) {
-            std::cerr << "Ошибка создания YUV420 framebuffer: " << strerror(errno) << std::endl;
+            std::cerr << "Error creating YUV420 framebuffer: " << strerror(errno) << std::endl;
             drmCloseBufferHandle(drm_fd, handle);
             return false;
         }

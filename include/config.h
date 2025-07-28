@@ -15,10 +15,10 @@ struct DecoderConfig {
     uint32_t input_codec = V4L2_PIX_FMT_H264;
     uint32_t output_pixel_format = V4L2_PIX_FMT_YUV420;
 
-    // Количество буферов
+    // Number of buffers
     size_t input_buffer_count = 6;
     size_t output_buffer_count = 4;
 
-    // Размер входного буфера по умолчанию, если драйвер не сообщает
+    // Default input buffer size if not reported by the driver
     size_t default_input_buffer_size = 2 * 1024 * 1024; // 2MB
 };

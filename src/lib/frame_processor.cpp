@@ -24,42 +24,42 @@ FrameProcessor::FrameProcessor(
 
 bool FrameProcessor::processDecodedFrame(const v4l2_buffer& out_buf) {
     if (!validateOutputBuffer(out_buf)) {
-        return true; // Возвращаем true, чтобы плохой буфер был перепоставлен в очередь
+        return true; // Return true to requeue the bad buffer
     }
 
     const auto& out_plane = out_buf.m.planes[0];
     decoded_frame_count_++;
-    std::cout << "✅ Кадр #" << decoded_frame_count_ << " (буфер " << out_buf.index 
-              << ", размер: " << out_plane.bytesused << ")" << std::endl;
+    std::cout << "✅ Frame #" << decoded_frame_count_ << " (buffer " << out_buf.index 
+              << ", size: " << out_plane.bytesused << ")" << std::endl;
 
-    // DEBUG: Проверяем состояние перед отображением
-    std::cout << "  [Debug] Проверка перед отображением: display_manager=" 
-              << (display_manager_ ? "есть" : "нет")
+    // DEBUG: Check state before display
+    std::cout << "  [Debug] Check before display: display_manager=" 
+              << (display_manager_ ? "exists" : "null")
               << ", width=" << frame_width_ << ", height=" << frame_height_ << std::endl;
 
     if (display_manager_ && frame_width_ > 0 && frame_height_ > 0) {
         if (!displayFrame(out_buf)) {
-            std::cerr << "⚠️ Ошибка отображения кадра " << decoded_frame_count_ << std::endl;
+            std::cerr << "⚠️ Error displaying frame " << decoded_frame_count_ << std::endl;
         }
     }
 
-    return true; // Всегда возвращаем true, чтобы буфер был перепоставлен
+    return true; // Always return true to requeue the buffer
 }
 
 bool FrameProcessor::validateOutputBuffer(const v4l2_buffer& out_buf) const {
     if (out_buf.index >= output_buffers_->count()) {
-        std::cerr << "❌ Недопустимый индекс буфера: " << out_buf.index 
+        std::cerr << "❌ Invalid buffer index: " << out_buf.index 
                   << " >= " << output_buffers_->count() << std::endl;
         return false;
     }
 
     if (output_buffers_->get_info(out_buf.index).fd < 0 || !output_buffers_->get_info(out_buf.index).mapped_addr) {
-        std::cerr << "❌ Недопустимый DMA-buf буфер " << out_buf.index << std::endl;
+        std::cerr << "❌ Invalid DMA-buf buffer " << out_buf.index << std::endl;
         return false;
     }
 
     if (out_buf.flags & V4L2_BUF_FLAG_ERROR) {
-        std::cerr << "⚠️ Буфер " << out_buf.index << " содержит ошибки декодирования" << std::endl;
+        std::cerr << "⚠️ Buffer " << out_buf.index << " contains decoding errors" << std::endl;
         return false;
     }
 
@@ -67,13 +67,13 @@ bool FrameProcessor::validateOutputBuffer(const v4l2_buffer& out_buf) const {
 }
 
 bool FrameProcessor::displayFrame(const v4l2_buffer& out_buf) {
-    std::cout << "FrameProcessor::displayFrame для буфера " << out_buf.index << std::endl;
+    std::cout << "FrameProcessor::displayFrame for buffer " << out_buf.index << std::endl;
     const auto& out_plane = out_buf.m.planes[0];
     uint8_t* buffer = static_cast<uint8_t*>(output_buffers_->get_info(out_buf.index).mapped_addr);
     size_t min_expected_size = frame_width_ * frame_height_ * 3 / 2;
 
     if (out_plane.bytesused < min_expected_size / 2) {
-        std::cerr << "⚠️ Буфер " << out_buf.index << " слишком мал: " 
+        std::cerr << "⚠️ Buffer " << out_buf.index << " is too small: " 
                   << out_plane.bytesused << " < " << min_expected_size/2 << std::endl;
         return false;
     }
@@ -89,7 +89,7 @@ bool FrameProcessor::displayFrame(const v4l2_buffer& out_buf) {
     }
 
     if (!has_content) {
-        std::cerr << "⚠️ Буфер " << out_buf.index << " содержит только инициализированные данные" << std::endl;
+        std::cerr << "⚠️ Buffer " << out_buf.index << " contains only initialized data" << std::endl;
         return false;
     }
 
@@ -109,13 +109,13 @@ bool FrameProcessor::displayFrame(const v4l2_buffer& out_buf) {
 
     bool success = display_manager_->displayFrame(frame_info);
     if (!success) {
-        std::cerr << "❌ display_manager_->displayFrame не удался" << std::endl;
+        std::cerr << "❌ display_manager_->displayFrame failed" << std::endl;
     }
     return success;
 }
 
 void FrameProcessor::setupZeroCopyBuffer(unsigned int index) {
-    std::cout << "FrameProcessor::setupZeroCopyBuffer для буфера " << index << std::endl;
+    std::cout << "FrameProcessor::setupZeroCopyBuffer for buffer " << index << std::endl;
     if (zero_copy_setup_callback_) {
         zero_copy_setup_callback_(index);
     }

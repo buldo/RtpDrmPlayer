@@ -13,42 +13,42 @@ V4L2Device::~V4L2Device() {
 
 bool V4L2Device::open(std::string_view device_path) {
     if (is_open()) {
-        std::cerr << "Устройство уже открыто" << std::endl;
+        std::cerr << "Device is already open" << std::endl;
         return false;
     }
 
     fd_ = ::open(device_path.data(), O_RDWR | O_NONBLOCK, 0);
     if (fd_ < 0) {
-        std::cerr << "Ошибка открытия устройства " << device_path << ": " << strerror(errno) << std::endl;
+        std::cerr << "Error opening device " << device_path << ": " << strerror(errno) << std::endl;
         return false;
     }
 
     poll_fds_.resize(1);
     poll_fds_[0].fd = fd_;
-    poll_fds_[0].events = POLLPRI; // По умолчанию для событий
+    poll_fds_[0].events = POLLPRI; // Default for events
 
-    std::cout << "Устройство " << device_path << " открыто, fd=" << fd_ << std::endl;
+    std::cout << "Device " << device_path << " opened, fd=" << fd_ << std::endl;
     return true;
 }
 
 void V4L2Device::close() {
     if (is_open()) {
         if (::close(fd_) < 0) {
-            std::cerr << "Ошибка закрытия устройства: " << strerror(errno) << std::endl;
+            std::cerr << "Error closing device: " << strerror(errno) << std::endl;
         }
         fd_ = -1;
         poll_fds_.clear();
-        std::cout << "Устройство закрыто" << std::endl;
+        std::cout << "Device closed" << std::endl;
     }
 }
 
 bool V4L2Device::ioctl_helper(unsigned long request, void* arg, const char* request_name) {
     if (!is_open()) {
-        std::cerr << "Устройство не открыто для ioctl " << request_name << std::endl;
+        std::cerr << "Device not open for ioctl " << request_name << std::endl;
         return false;
     }
     if (ioctl(fd_, request, arg) < 0) {
-        std::cerr << "Ошибка ioctl " << request_name << ": " << strerror(errno) << std::endl;
+        std::cerr << "Error ioctl " << request_name << ": " << strerror(errno) << std::endl;
         return false;
     }
     return true;
@@ -67,7 +67,7 @@ bool V4L2Device::get_format(v4l2_format& fmt) {
 }
 
 bool V4L2Device::set_control(const v4l2_control& ctrl) {
-    // Создаем копию, так как ioctl может изменять структуру
+    // Create a copy as ioctl might modify the structure
     v4l2_control temp_ctrl = ctrl;
     return ioctl_helper(VIDIOC_S_CTRL, &temp_ctrl, "VIDIOC_S_CTRL");
 }
@@ -81,14 +81,14 @@ bool V4L2Device::queue_buffer(v4l2_buffer& buf) {
 }
 
 bool V4L2Device::dequeue_buffer(v4l2_buffer& buf) {
-    // Этот ioctl может возвращать EAGAIN, что не является фатальной ошибкой
+    // This ioctl can return EAGAIN, which is not a fatal error
     if (!is_open()) {
-        std::cerr << "Устройство не открыто для ioctl VIDIOC_DQBUF" << std::endl;
+        std::cerr << "Device not open for ioctl VIDIOC_DQBUF" << std::endl;
         return false;
     }
     if (ioctl(fd_, VIDIOC_DQBUF, &buf) < 0) {
         if (errno != EAGAIN) {
-            std::cerr << "Ошибка ioctl VIDIOC_DQBUF: " << strerror(errno) << std::endl;
+            std::cerr << "Error ioctl VIDIOC_DQBUF: " << strerror(errno) << std::endl;
         }
         return false;
     }
@@ -112,7 +112,7 @@ bool V4L2Device::subscribe_to_events() {
     sub_source_change.type = V4L2_EVENT_SOURCE_CHANGE;
     if (!subscribe_event(sub_source_change)) return false;
 
-    std::cout << "✅ Подписка на события V4L2_EVENT_EOS и V4L2_EVENT_SOURCE_CHANGE" << std::endl;
+    std::cout << "✅ Subscribed to V4L2_EVENT_EOS and V4L2_EVENT_SOURCE_CHANGE events" << std::endl;
     return true;
 }
 
@@ -122,13 +122,13 @@ bool V4L2Device::dequeue_event(v4l2_event& ev) {
 
 bool V4L2Device::poll(short events, int timeout_ms) {
     if (!is_open()) {
-        std::cerr << "Устройство не открыто для poll" << std::endl;
+        std::cerr << "Device not open for poll" << std::endl;
         return false;
     }
     poll_fds_[0].events = events;
     int ret = ::poll(poll_fds_.data(), poll_fds_.size(), timeout_ms);
     if (ret < 0) {
-        std::cerr << "Ошибка poll: " << strerror(errno) << std::endl;
+        std::cerr << "Poll error: " << strerror(errno) << std::endl;
         revents_ = 0;
         return false;
     }
@@ -170,10 +170,10 @@ bool V4L2Device::configure_decoder_formats(uint32_t width, uint32_t height, uint
     fmt_in.fmt.pix_mp.num_planes = 1;
     fmt_in.fmt.pix_mp.plane_fmt[0].sizeimage = 2 * 1024 * 1024; // 2MB for H.264
     if (!set_format(fmt_in)) {
-        std::cerr << "❌ ОШИБКА: Не удалось установить входной формат" << std::endl;
+        std::cerr << "❌ ERROR: Failed to set input format" << std::endl;
         return false;
     }
-    std::cout << "Входной формат установлен: " << width << "x" << height << std::endl;
+    std::cout << "Input format set: " << width << "x" << height << std::endl;
 
     struct v4l2_format fmt_out = {};
     fmt_out.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
@@ -182,27 +182,27 @@ bool V4L2Device::configure_decoder_formats(uint32_t width, uint32_t height, uint
     fmt_out.fmt.pix_mp.pixelformat = out_pixel_format;
     fmt_out.fmt.pix_mp.num_planes = 1;
     if (!set_format(fmt_out)) {
-        std::cerr << "❌ ОШИБКА: Не удалось установить выходной формат" << std::endl;
+        std::cerr << "❌ ERROR: Failed to set output format" << std::endl;
         return false;
     }
-    std::cout << "Выходной формат установлен: " << width << "x" << height << std::endl;
+    std::cout << "Output format set: " << width << "x" << height << std::endl;
 
-    // Устанавливаем минимальное количество буферов для захвата для минимальной задержки
+    // Set the minimum number of capture buffers for minimum latency
     struct v4l2_control ctrl = {};
     ctrl.id = V4L2_CID_MIN_BUFFERS_FOR_CAPTURE;
     ctrl.value = 1;
     if (!set_control(ctrl)) {
-        std::cout << "⚠️ ПРЕДУПРЕЖДЕНИЕ: Не удалось установить V4L2_CID_MIN_BUFFERS_FOR_CAPTURE=1. Это может увеличить задержку." << std::endl;
-        // Не критично, продолжаем
+        std::cout << "⚠️ WARNING: Failed to set V4L2_CID_MIN_BUFFERS_FOR_CAPTURE=1. This may increase latency." << std::endl;
+        // Not critical, continue
     } else {
-        std::cout << "✅ Установлена минимальная буферизация на выходе (MIN_BUFFERS_FOR_CAPTURE=1) для низкой задержки" << std::endl;
+        std::cout << "✅ Minimum output buffering set (MIN_BUFFERS_FOR_CAPTURE=1) for low latency" << std::endl;
     }
 
     return true;
 }
 
 bool V4L2Device::check_dma_buf_support() {
-    // Пытаемся запросить буферы в режиме DMA-buf для тестирования
+    // Try to request buffers in DMA-buf mode for testing
     struct v4l2_requestbuffers req = {};
     req.count = 1;
     req.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -210,10 +210,10 @@ bool V4L2Device::check_dma_buf_support() {
 
     bool supported = request_buffers(req);
 
-    std::cout << "Проверка поддержки DMA-buf: " << (supported ? "OK" : "FAIL")
+    std::cout << "Checking DMA-buf support: " << (supported ? "OK" : "FAIL")
               << std::endl;
 
-    // Сбрасываем буферы после тестирования
+    // Reset buffers after testing
     if (supported) {
         req.count = 0;
         (void)request_buffers(req);
@@ -223,7 +223,7 @@ bool V4L2Device::check_dma_buf_support() {
 }
 
 bool V4L2Device::initialize_for_decoding(std::string_view device_path) {
-    std::cout << "Инициализация V4L2 устройства для декодирования: " << device_path << std::endl;
+    std::cout << "Initializing V4L2 device for decoding: " << device_path << std::endl;
 
     if (!open(device_path)) {
         return false;
@@ -235,31 +235,31 @@ bool V4L2Device::initialize_for_decoding(std::string_view device_path) {
         return false;
     }
 
-    std::cout << "Устройство: " << cap.card << "\nДрайвер: " << cap.driver << std::endl;
+    std::cout << "Device: " << cap.card << "\nDriver: " << cap.driver << std::endl;
 
     if (!(cap.capabilities & V4L2_CAP_VIDEO_M2M_MPLANE)) [[unlikely]] {
-        std::cerr << "❌ ОШИБКА: Устройство не поддерживает V4L2_CAP_VIDEO_M2M_MPLANE" << std::endl;
-        std::cerr << "Доступные возможности: 0x" << std::hex << cap.capabilities << std::dec << std::endl;
+        std::cerr << "❌ ERROR: Device does not support V4L2_CAP_VIDEO_M2M_MPLANE" << std::endl;
+        std::cerr << "Available capabilities: 0x" << std::hex << cap.capabilities << std::dec << std::endl;
         close();
         return false;
     }
 
-    // Проверяем поддержку DMA-buf в V4L2 драйвере
+    // Check for DMA-buf support in the V4L2 driver
     if (!check_dma_buf_support()) {
-        std::cerr << "❌ КРИТИЧЕСКАЯ ОШИБКА: V4L2 драйвер не поддерживает DMA-buf" << std::endl;
-        std::cerr << "Возможные причины:" << std::endl;
-        std::cerr << "  - Устаревший драйвер" << std::endl;
-        std::cerr << "  - Неправильная конфигурация ядра" << std::endl;
+        std::cerr << "❌ CRITICAL ERROR: V4L2 driver does not support DMA-buf" << std::endl;
+        std::cerr << "Possible reasons:" << std::endl;
+        std::cerr << "  - Outdated driver" << std::endl;
+        std::cerr << "  - Incorrect kernel configuration" << std::endl;
         close();
         return false;
     }
 
-    std::cout << "Используем DMA-buf буферы" << std::endl;
+    std::cout << "Using DMA-buf buffers" << std::endl;
 
-    // Подписываемся на критические V4L2 события
+    // Subscribe to critical V4L2 events
     if (!subscribe_to_events()) {
-        std::cerr << "⚠️ ПРЕДУПРЕЖДЕНИЕ: Не удалось подписаться на V4L2 события" << std::endl;
-        // Продолжаем работу - события не критичны для базовой функциональности
+        std::cerr << "⚠️ WARNING: Failed to subscribe to V4L2 events" << std::endl;
+        // Continue operation - events are not critical for basic functionality
     }
 
     return true;
