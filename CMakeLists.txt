@@ -48,7 +48,6 @@ add_library(rtp_components STATIC
     src/lib/dmabuf_allocator.cpp
     src/lib/display_manager.cpp
     src/lib/drm_dmabuf_display.cpp
-    src/lib/rtp_receiver.cpp
     src/lib/uvgrtp_receiver.cpp
     src/lib/frame_processor.cpp
     src/lib/streaming_manager.cpp
