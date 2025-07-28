@@ -1,11 +1,11 @@
 #include "frame_processor.h"
-#include "display_manager.h"
+#include "drm_dmabuf_display.h"
 #include "dma_buffers_manager.h"
 #include <iostream>
 #include <algorithm> // Для std::min
 
 FrameProcessor::FrameProcessor(
-    DisplayManager* display_manager,
+    DrmDmaBufDisplayManager* display_manager,
     DmaBuffersManager* output_buffers,
     uint32_t& frame_width,
     uint32_t& frame_height,
@@ -93,7 +93,7 @@ bool FrameProcessor::displayFrame(const v4l2_buffer& out_buf) {
         return false;
     }
 
-    DisplayManager::FrameInfo frame_info = {
+    DrmDmaBufDisplayManager::FrameInfo frame_info = {
         output_buffers_->get_info(out_buf.index).mapped_addr,
         output_buffers_->get_info(out_buf.index).fd,
         frame_width_,
@@ -121,6 +121,6 @@ void FrameProcessor::setupZeroCopyBuffer(unsigned int index) {
     }
 }
 
-void FrameProcessor::setDisplayManager(DisplayManager* display_manager) {
+void FrameProcessor::setDisplayManager(DrmDmaBufDisplayManager* display_manager) {
     display_manager_ = display_manager;
 }

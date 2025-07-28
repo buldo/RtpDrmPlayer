@@ -7,7 +7,7 @@
 #include <functional>
 
 // Forward declarations
-class DisplayManager;
+class DrmDmaBufDisplayManager;
 class DmaBuffersManager;
 
 class FrameProcessor {
@@ -15,7 +15,7 @@ public:
     using ZeroCopySetupCallback = std::function<void(unsigned int)>;
 
     FrameProcessor(
-        DisplayManager* display_manager,
+        DrmDmaBufDisplayManager* display_manager,
         DmaBuffersManager* output_buffers,
         uint32_t& frame_width,
         uint32_t& frame_height,
@@ -29,14 +29,14 @@ public:
     [[nodiscard]] bool processDecodedFrame(const v4l2_buffer& out_buf);
 
     // Обновление указателя на DisplayManager
-    void setDisplayManager(DisplayManager* display_manager);
+    void setDisplayManager(DrmDmaBufDisplayManager* display_manager);
 
 private:
     [[nodiscard]] bool validateOutputBuffer(const v4l2_buffer& out_buf) const;
     [[nodiscard]] bool displayFrame(const v4l2_buffer& out_buf);
     void setupZeroCopyBuffer(unsigned int index);
 
-    DisplayManager* display_manager_;
+    DrmDmaBufDisplayManager* display_manager_;
     DmaBuffersManager* output_buffers_;
     uint32_t& frame_width_;
     uint32_t& frame_height_;

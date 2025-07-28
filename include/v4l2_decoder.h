@@ -6,7 +6,6 @@
 
 class V4L2DecoderImpl;
 class DmaBufAllocator;
-class DisplayManager;
 
 /**
  * @brief V4L2 Hardware H.264 Decoder
@@ -30,7 +29,7 @@ public:
     ~V4L2Decoder();
 
     [[nodiscard]] bool initialize(const DecoderConfig& config);
-    [[nodiscard]] bool setDisplay(DisplayType display_type);
+    [[nodiscard]] bool setDisplay();
     [[nodiscard]] bool decodeData(const uint8_t* data, size_t size);
     [[nodiscard]] bool flushDecoder();  // Принудительная очистка буферов декодера
     [[nodiscard]] bool resetBuffers();  // Полный сброс и пересоздание буферов

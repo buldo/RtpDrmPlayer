@@ -3,7 +3,7 @@
 #include "v4l2_device.h"
 #include "dmabuf_allocator.h"
 #include "dma_buffers_manager.h"
-#include "display_manager.h" // Contains DrmDmaBufDisplayManager
+#include "drm_dmabuf_display.h"
 #include "frame_processor.h"
 #include "streaming_manager.h"
 #include <iostream>
@@ -37,7 +37,7 @@ class V4L2DecoderImpl {
     std::vector<bool> zero_copy_initialized;
 
     // For display
-    std::unique_ptr<DisplayManager> display_manager;
+    std::unique_ptr<DrmDmaBufDisplayManager> display_manager;
     V4L2Decoder::DisplayType display_type = V4L2Decoder::DisplayType::NONE;
     uint32_t frame_width = 0;
     uint32_t frame_height = 0;
@@ -176,60 +176,26 @@ public:
         return true;
     }
 
-    [[nodiscard]] bool setDisplay(V4L2Decoder::DisplayType disp_type) {
-        display_type = disp_type;
+    [[nodiscard]] bool setDisplay() {
+        display_type = V4L2Decoder::DisplayType::DRM_DMABUF;
         
-        std::cout << "Настройка дисплея: ";
-        switch (display_type) {
-            case V4L2Decoder::DisplayType::NONE:
-                std::cout << "отключен" << std::endl;
-                display_manager.reset();
-                return true;
-            case V4L2Decoder::DisplayType::DRM_DMABUF:
-                std::cout << "TRUE Zero-Copy DMA-buf" << std::endl;
-                break;
-            default:
-                std::cerr << "неподдерживаемый тип" << std::endl;
-                return false;
-        }
+        std::cout << "Настройка дисплея: TRUE Zero-Copy DMA-buf" << std::endl;
         
-        DisplayManager::DisplayType manager_type;
-        switch (display_type) {
-            case V4L2Decoder::DisplayType::DRM_DMABUF:
-                manager_type = DisplayManager::DisplayType::DRM_DMABUF;
-                break;
-            default:
-                std::cerr << "Неподдерживаемый тип дисплея" << std::endl;
-                return false;
-        }
+        display_manager = std::make_unique<DrmDmaBufDisplayManager>();
         
-        if (!DisplayManager::isSupported(manager_type)) {
-            std::cerr << "Тип дисплея не поддерживается системой" << std::endl;
-            return false;
-        }
-        
-        display_manager = DisplayManager::create(manager_type);
-        if (!display_manager) {
-            std::cerr << "Ошибка создания менеджера дисплея" << std::endl;
-            return false;
-        }
-        
-        // Обновляем указатель в FrameProcessor
-        if (frame_processor_) {
-            frame_processor_->setDisplayManager(display_manager.get());
-        }
-        
-        std::cout << "Менеджер дисплея создан успешно" << std::endl;
-        
-        // Если размеры кадра уже известны, сразу инициализируем дисплей
+        // Если frame_width и frame_height уже известны, инициализируем дисплей
         if (frame_width > 0 && frame_height > 0) {
-            std::cout << "Инициализация дисплея " << frame_width << "x" << frame_height << std::endl;
             if (!display_manager->initialize(frame_width, frame_height)) {
                 std::cerr << "Ошибка инициализации дисплея" << std::endl;
                 display_manager.reset();
                 return false;
             }
             std::cout << "Дисплей инициализирован: " << display_manager->getDisplayInfo() << std::endl;
+        }
+        
+        // Обновляем display_manager в frame_processor
+        if (frame_processor_) {
+            frame_processor_->setDisplayManager(display_manager.get());
         }
         
         return true;
@@ -765,26 +731,9 @@ public:
 V4L2Decoder::V4L2Decoder() : impl(std::make_unique<V4L2DecoderImpl>()) {}
 V4L2Decoder::~V4L2Decoder() = default;
 
-bool V4L2Decoder::initialize(const DecoderConfig& config) {
-    return impl->initialize(config);
-}
-
-bool V4L2Decoder::setDisplay(DisplayType display_type) {
-    return impl->setDisplay(display_type);
-}
-
-bool V4L2Decoder::decodeData(const uint8_t* data, size_t size) {
-    return impl->decodeData(data, size);
-}
-
-bool V4L2Decoder::flushDecoder() {
-    return impl->flushDecoder();
-}
-
-bool V4L2Decoder::resetBuffers() {
-    return impl->resetBuffers();
-}
-
-int V4L2Decoder::getDecodedFrameCount() const {
-    return impl->getDecodedFrameCount();
-}
+bool V4L2Decoder::initialize(const DecoderConfig& config) { return impl->initialize(config); }
+bool V4L2Decoder::setDisplay() { return impl->setDisplay(); }
+bool V4L2Decoder::decodeData(const uint8_t* data, size_t size) { return impl->decodeData(data, size); }
+bool V4L2Decoder::flushDecoder() { return impl->flushDecoder(); }
+bool V4L2Decoder::resetBuffers() { return impl->resetBuffers(); }
+int V4L2Decoder::getDecodedFrameCount() const { return impl->getDecodedFrameCount(); }

@@ -5,7 +5,6 @@
 
 #include "v4l2_decoder.h"
 #include "config.h"
-#include "display_manager.h"
 #include "uvgrtp_receiver.h"
 #include <iostream>
 #include <thread>
@@ -45,7 +44,7 @@ public:
         }
 
         // Настраиваем отображение
-        if (!decoder_->setDisplay(V4L2Decoder::DisplayType::DRM_DMABUF)) {
+        if (!decoder_->setDisplay()) {
             std::cerr << "Ошибка настройки дисплея" << std::endl;
             return false;
         }
