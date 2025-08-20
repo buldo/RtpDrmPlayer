@@ -1,5 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace RtpDrmPlayer.Native.Tests.Interop;
@@ -9,47 +11,47 @@ internal static class NativeLoader
     private const string LibName = "libtestconsts.so";
 
     [StructLayout(LayoutKind.Sequential)]
-    internal struct ExportedConsts
+    public struct ExportedConsts
     {
-        public uint V4L2_CAP_VIDEO_M2M_MPLANE;
-        public uint V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-        public uint V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-        public uint V4L2_MEMORY_DMABUF;
-        public uint V4L2_EVENT_EOS;
-        public uint V4L2_EVENT_SOURCE_CHANGE;
-        public uint V4L2_EVENT_FRAME_SYNC;
-        public uint V4L2_EVENT_SRC_CH_RESOLUTION;
-        public uint V4L2_CID_MIN_BUFFERS_FOR_CAPTURE;
-        public uint V4L2_BUF_FLAG_ERROR;
-        public uint V4L2_BUF_FLAG_LAST;
-        public ulong VIDIOC_QUERYCAP;
-        public ulong VIDIOC_G_FMT;
-        public ulong VIDIOC_S_FMT;
-        public ulong VIDIOC_REQBUFS;
-        public ulong VIDIOC_QBUF;
-        public ulong VIDIOC_DQBUF;
-        public ulong VIDIOC_STREAMON;
-        public ulong VIDIOC_STREAMOFF;
-        public ulong VIDIOC_S_CTRL;
-        public ulong VIDIOC_SUBSCRIBE_EVENT;
-        public ulong VIDIOC_DQEVENT;
-        public ulong DMA_BUF_IOCTL_SYNC;
-    public ulong DRM_IOCTL_PRIME_FD_TO_HANDLE;
-    public ulong DRM_IOCTL_GEM_CLOSE;
-    public ulong DRM_IOCTL_MODE_GETRESOURCES;
-    public ulong DRM_IOCTL_MODE_GETCRTC;
-    public ulong DRM_IOCTL_MODE_SETCRTC;
-    public ulong DRM_IOCTL_MODE_GETENCODER;
-    public ulong DRM_IOCTL_MODE_GETCONNECTOR;
-    public ulong DRM_IOCTL_MODE_ADDFB2;
-    public ulong DRM_IOCTL_MODE_RMFB;
-    public ulong DRM_IOCTL_MODE_PAGE_FLIP;
-    public uint V4L2_PIX_FMT_H264;
-    public uint V4L2_PIX_FMT_YUV420;
-    public uint V4L2_PIX_FMT_NV12;
-    public uint DMA_BUF_SYNC_START;
-    public uint DMA_BUF_SYNC_END;
-    public uint DMA_BUF_SYNC_RW;
+        public uint V4L2_CAP_VIDEO_M2M_MPLANE_;
+        public uint V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE_;
+        public uint V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE_;
+        public uint V4L2_MEMORY_DMABUF_;
+        public uint V4L2_EVENT_EOS_;
+        public uint V4L2_EVENT_SOURCE_CHANGE_;
+        public uint V4L2_EVENT_FRAME_SYNC_;
+        public uint V4L2_EVENT_SRC_CH_RESOLUTION_;
+        public uint V4L2_CID_MIN_BUFFERS_FOR_CAPTURE_;
+        public uint V4L2_BUF_FLAG_ERROR_;
+        public uint V4L2_BUF_FLAG_LAST_;
+        public ulong VIDIOC_QUERYCAP_;
+        public ulong VIDIOC_G_FMT_;
+        public ulong VIDIOC_S_FMT_;
+        public ulong VIDIOC_REQBUFS_;
+        public ulong VIDIOC_QBUF_;
+        public ulong VIDIOC_DQBUF_;
+        public ulong VIDIOC_STREAMON_;
+        public ulong VIDIOC_STREAMOFF_;
+        public ulong VIDIOC_S_CTRL_;
+        public ulong VIDIOC_SUBSCRIBE_EVENT_;
+        public ulong VIDIOC_DQEVENT_;
+        public ulong DMA_BUF_IOCTL_SYNC_;
+    public ulong DRM_IOCTL_PRIME_FD_TO_HANDLE_;
+    public ulong DRM_IOCTL_GEM_CLOSE_;
+    public ulong DRM_IOCTL_MODE_GETRESOURCES_;
+    public ulong DRM_IOCTL_MODE_GETCRTC_;
+    public ulong DRM_IOCTL_MODE_SETCRTC_;
+    public ulong DRM_IOCTL_MODE_GETENCODER_;
+    public ulong DRM_IOCTL_MODE_GETCONNECTOR_;
+    public ulong DRM_IOCTL_MODE_ADDFB2_;
+    public ulong DRM_IOCTL_MODE_RMFB_;
+    public ulong DRM_IOCTL_MODE_PAGE_FLIP_;
+    public uint V4L2_PIX_FMT_H264_;
+    public uint V4L2_PIX_FMT_YUV420_;
+    public uint V4L2_PIX_FMT_NV12_;
+    public uint DMA_BUF_SYNC_START_;
+    public uint DMA_BUF_SYNC_END_;
+    public uint DMA_BUF_SYNC_RW_;
     public int O_RDWR_;
     public int O_NONBLOCK_;
     public int O_CLOEXEC_;
@@ -63,31 +65,59 @@ internal static class NativeLoader
     public uint SIZE_v4l2_pix_format_mplane;
     }
 
-    [DllImport(LibName, EntryPoint = "get_exported_consts")]
-    private static extern ExportedConsts get_exported_consts();
+    private static readonly Lazy<ExportedConsts> _instance = new(Load);
 
-    internal static ExportedConsts Load() => get_exported_consts();
+    public static ExportedConsts Instance => _instance.Value;
 
-    internal static string BuildNativeLibrary(string sourceDir)
+    private static ExportedConsts Load()
     {
-        var soPath = Path.Combine(sourceDir, LibName);
-        if(File.Exists(soPath)) return soPath;
-        var cFile = Path.Combine(sourceDir, "constants.c");
-        var args = $"-shared -fPIC -O2 -o {LibName} {cFile}";
-        var proc = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "gcc",
-            Arguments = args,
-            WorkingDirectory = sourceDir,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            UseShellExecute = false
-        });
-        proc!.WaitForExit();
-        if(proc.ExitCode != 0)
-        {
-            throw new Exception($"gcc failed: {proc.ExitCode}\n{proc.StandardError.ReadToEnd()}");
-        }
-        return soPath;
+        BuildNativeLibrary();
+        return get_exported_consts();
     }
+
+    internal static void BuildNativeLibrary()
+    {
+        var assemblyLocation = Assembly.GetExecutingAssembly().Location;
+        var assemblyDirectory = Path.GetDirectoryName(assemblyLocation);
+
+        // Find the source constants.c file relative to the assembly
+        var sourceFile = Path.GetFullPath(Path.Combine(assemblyDirectory, "..", "..", "..", "native", "constants.c"));
+        if (!File.Exists(sourceFile))
+        {
+            throw new FileNotFoundException($"Original native source file not found: {sourceFile}");
+        }
+
+        // Create a 'native' directory in the output folder and copy the source file there
+        var nativeDir = Path.Combine(assemblyDirectory, "native");
+        Directory.CreateDirectory(nativeDir);
+        var sourcePathInOutput = Path.Combine(nativeDir, "constants.c");
+        File.Copy(sourceFile, sourcePathInOutput, true);
+
+        var outputPath = Path.Combine(assemblyDirectory, "libtestconsts.so");
+
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "/usr/bin/gcc",
+                Arguments = $"-shared -fPIC -o {outputPath} {sourcePathInOutput}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            }
+        };
+
+        process.Start();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            var error = process.StandardError.ReadToEnd();
+            throw new Exception($"Failed to build native library: {error}");
+        }
+    }
+
+    [DllImport("libtestconsts.so", EntryPoint = "get_exported_consts")]
+    private static extern ExportedConsts get_exported_consts();
 }

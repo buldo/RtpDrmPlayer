@@ -48,7 +48,7 @@ public static class DrmConst
         public uint pad;    // reserved
     }
 
-    public static readonly uint DRM_IOCTL_PRIME_FD_TO_HANDLE = _IOWR(DRM_IOCTL_BASE, DRM_COMMAND_BASE + DRM_PRIME_FD_TO_HANDLE, Marshal.SizeOf<drm_prime_handle>());
+    public static readonly uint DRM_IOCTL_PRIME_FD_TO_HANDLE = 3222037550;
     public static readonly uint DRM_IOCTL_GEM_CLOSE = _IOW(DRM_IOCTL_BASE, DRM_IOCTL_GEM_CLOSE_IDX, Marshal.SizeOf<drm_gem_close>());
 
     // Mode setting (legacy) ioctl indices (from drm_mode.h)
@@ -73,10 +73,16 @@ public static class DrmConst
         public uint min_width; public uint max_width; public uint min_height; public uint max_height;
     }
 
-    [StructLayout(LayoutKind.Sequential)] public struct drm_mode_modeinfo
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe struct drm_mode_modeinfo
     {
-        public uint clock; public ushort hdisplay; public ushort hsync_start; public ushort hsync_end; public ushort htotal; public ushort hskew; public ushort vdisplay; public ushort vsync_start; public ushort vsync_end; public ushort vtotal; public ushort vscan; public uint vrefresh; public uint flags; public uint type;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst=32)] public byte[] name;
+        public uint clock;
+        public ushort hdisplay, hsync_start, hsync_end, htotal, hskew;
+        public ushort vdisplay, vsync_start, vsync_end, vtotal, vscan;
+        public uint vrefresh;
+        public uint flags;
+        public uint type;
+        public fixed byte name[32];
     }
 
     [StructLayout(LayoutKind.Sequential)] public struct drm_mode_get_connector
@@ -92,24 +98,34 @@ public static class DrmConst
         public uint encoder_id; public uint encoder_type; public uint crtc_id; public uint possible_crtcs; public uint possible_clones;
     }
 
-    [StructLayout(LayoutKind.Sequential)] public struct drm_mode_crtc
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe struct drm_mode_crtc
     {
-        public uint set_connectors_ptr_low; // we will pack pointer (low 32 bits not used separately)
+        public ulong set_connectors_ptr;
         public uint count_connectors;
-        public uint crtc_id; public uint fb_id; public uint x; public uint y; public uint gamma_size; public uint mode_valid;
+        public uint crtc_id;
+        public uint fb_id;
+        public uint x, y;
+        public uint gamma_size;
+        public uint mode_valid;
         public drm_mode_modeinfo mode;
     }
 
-    [StructLayout(LayoutKind.Sequential)] public struct drm_mode_fb_cmd2
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe struct drm_mode_fb_cmd2
     {
-        public uint fb_id; public uint width; public uint height; public uint pixel_format; public uint flags;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst=4)] public uint[] handles;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst=4)] public uint[] pitches;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst=4)] public uint[] offsets;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst=4)] public ulong[] modifier;
+        public uint fb_id;
+        public uint width, height;
+        public uint pixel_format;
+        public uint flags;
+        public fixed uint handles[4];
+        public fixed uint pitches[4];
+        public fixed uint offsets[4];
+        public fixed ulong modifier[4];
     }
 
-    [StructLayout(LayoutKind.Sequential)] public struct drm_mode_crtc_page_flip
+    [StructLayout(LayoutKind.Sequential)]
+    public struct drm_mode_crtc_page_flip
     {
         public uint crtc_id; public uint fb_id; public uint flags; public uint reserved; public ulong user_data;
     }

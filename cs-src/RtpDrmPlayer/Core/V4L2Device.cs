@@ -13,7 +13,7 @@ namespace RtpDrmPlayer.Core;
 public sealed class V4L2Device : IDisposable
 {
     private int _fd = -1;
-    private pollfd[] _pollFds = Array.Empty<pollfd>();
+    private PollFd[] _pollFds = Array.Empty<PollFd>();
     private short _revents;
 
     public V4L2Device()
@@ -51,10 +51,10 @@ public sealed class V4L2Device : IDisposable
         
         _pollFds = new[]
         {
-            new pollfd
+            new PollFd
             {
-                fd = _fd,
-                events = LibC.POLLPRI  // Инициализируем для событий по умолчанию
+                Fd = _fd,
+                Events = LibC.POLLPRI  // Инициализируем для событий по умолчанию
             }
         };
         
@@ -74,7 +74,7 @@ public sealed class V4L2Device : IDisposable
         
         LibC.close(_fd);
         _fd = -1;
-        _pollFds = Array.Empty<pollfd>();
+        _pollFds = Array.Empty<PollFd>();
         
         Console.WriteLine("V4L2 device closed");
     }
@@ -118,16 +118,11 @@ public sealed class V4L2Device : IDisposable
     }
     
     // Безопасная версия ioctl с использованием GCHandle
-    private bool SafeIoctl<T>(ulong request, ref T structure, string requestName) where T : struct
+    private unsafe bool SafeIoctl<T>(ulong request, ref T structure, string requestName) where T : struct
     {
-        GCHandle handle = GCHandle.Alloc(structure, GCHandleType.Pinned);
-        try
+        fixed (T* p = &structure)
         {
-            return ioctl_helper(request, handle.AddrOfPinnedObject(), requestName);
-        }
-        finally
-        {
-            handle.Free();
+            return ioctl_helper(request, (IntPtr)p, requestName);
         }
     }
     
@@ -143,18 +138,28 @@ public sealed class V4L2Device : IDisposable
     /// <summary>
     /// Запрашивает информацию о возможностях устройства
     /// </summary>
-    public bool query_capability(ref v4l2_capability cap)
+    public unsafe bool query_capability(ref v4l2_capability cap)
     {
         bool result = SafeIoctl(V4L2Const.VIDIOC_QUERYCAP, ref cap, "VIDIOC_QUERYCAP");
         
         if (result)
         {
-            string driverName = System.Text.Encoding.ASCII.GetString(cap.driver)
-                .TrimEnd('\0');
-            string cardName = System.Text.Encoding.ASCII.GetString(cap.card)
-                .TrimEnd('\0');
-            string busInfo = System.Text.Encoding.ASCII.GetString(cap.bus_info)
-                .TrimEnd('\0');
+            string driverName, cardName, busInfo;
+            
+            fixed (byte* pDriver = cap.driver)
+            {
+                driverName = Marshal.PtrToStringAnsi((IntPtr)pDriver) ?? string.Empty;
+            }
+            
+            fixed (byte* pCard = cap.card)
+            {
+                cardName = Marshal.PtrToStringAnsi((IntPtr)pCard) ?? string.Empty;
+            }
+
+            fixed (byte* pBusInfo = cap.bus_info)
+            {
+                busInfo = Marshal.PtrToStringAnsi((IntPtr)pBusInfo) ?? string.Empty;
+            }
             
             Console.WriteLine($"Device capabilities: driver='{driverName}', card='{cardName}', bus='{busInfo}'");
         }
@@ -342,19 +347,22 @@ public sealed class V4L2Device : IDisposable
     public bool subscribe_to_events()
     {
         // Подписываемся на все события кодека/декодера
-        var subscription = new v4l2_event_subscription
+        var sub_src_change = new v4l2_event_subscription
         {
             type = V4L2Const.V4L2_EVENT_SOURCE_CHANGE
         };
         
-        if (!subscribe_event(ref subscription))
+        if (!subscribe_event(ref sub_src_change))
         {
             Console.WriteLine("❌ Failed to subscribe to SOURCE_CHANGE events");
             return false;
         }
 
-        subscription.type = V4L2Const.V4L2_EVENT_EOS;
-        if (!subscribe_event(ref subscription))
+        var sub_eos = new v4l2_event_subscription
+        {
+            type = V4L2Const.V4L2_EVENT_EOS
+        };
+        if (!subscribe_event(ref sub_eos))
         {
             Console.WriteLine("❌ Failed to subscribe to EOS events");
             return false;
@@ -390,7 +398,7 @@ public sealed class V4L2Device : IDisposable
             return false;
         }
         
-        _pollFds[0].events = events;
+        _pollFds[0].Events = events;
         
         int result = LibC.poll(_pollFds, (uint)_pollFds.Length, timeoutMs);
         
@@ -402,7 +410,7 @@ public sealed class V4L2Device : IDisposable
             return false;
         }
         
-        _revents = _pollFds[0].revents;
+        _revents = _pollFds[0].Revents;
         
         if (_revents != 0)
         {
@@ -468,25 +476,6 @@ public sealed class V4L2Device : IDisposable
         Console.WriteLine($"Configuring decoder formats: {width}x{height}, in=0x{inPixelFormat:X}, out=0x{outPixelFormat:X}");
         
         // Настраиваем входной формат (OUTPUT)
-        var inputPlanes = new v4l2_plane_pix_format[8];
-        inputPlanes[0] = new v4l2_plane_pix_format 
-        { 
-            sizeimage = inputSizeImage, // Размер в байтах для сжатых данных
-            bytesperline = 0,           // Для сжатых данных не используется
-            reserved = new ushort[7] 
-        };
-        
-        // Инициализируем остальные плоскости
-        for (int i = 1; i < inputPlanes.Length; i++)
-        {
-            inputPlanes[i] = new v4l2_plane_pix_format
-            {
-                sizeimage = 0,
-                bytesperline = 0,
-                reserved = new ushort[7]
-            };
-        }
-        
         var inputFormat = new v4l2_format
         {
             type = V4L2Const.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
@@ -495,11 +484,11 @@ public sealed class V4L2Device : IDisposable
                 width = width,
                 height = height,
                 pixelformat = inPixelFormat,
-                num_planes = 1,
-                plane_fmt = inputPlanes,
-                reserved = new byte[7]
+                num_planes = 1
             }
         };
+        inputFormat.fmt.plane_fmt_0.sizeimage = inputSizeImage;
+        inputFormat.fmt.plane_fmt_0.bytesperline = 0;
         
         if (!set_format(ref inputFormat))
         {
@@ -508,25 +497,6 @@ public sealed class V4L2Device : IDisposable
         }
         
         // Настраиваем выходной формат (CAPTURE)
-        var outputPlanes = new v4l2_plane_pix_format[8];
-        outputPlanes[0] = new v4l2_plane_pix_format 
-        { 
-            sizeimage = width * height * 3 / 2, // Для NV12 (1.5 байта на пиксель)
-            bytesperline = (ushort)width,       // Стандартная ширина строки
-            reserved = new ushort[7] 
-        };
-        
-        // Инициализируем остальные плоскости
-        for (int i = 1; i < outputPlanes.Length; i++)
-        {
-            outputPlanes[i] = new v4l2_plane_pix_format
-            {
-                sizeimage = 0,
-                bytesperline = 0,
-                reserved = new ushort[7]
-            };
-        }
-        
         var outputFormat = new v4l2_format
         {
             type = V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
@@ -535,11 +505,12 @@ public sealed class V4L2Device : IDisposable
                 width = width,
                 height = height,
                 pixelformat = outPixelFormat,
-                num_planes = 1,
-                plane_fmt = outputPlanes,
-                reserved = new byte[7]
+                num_planes = 1 // Для NV12 будет 2, но драйвер может сам исправить
             }
         };
+        // Для NV12, sizeimage это общий размер, а bytesperline - ширина luma
+        outputFormat.fmt.plane_fmt_0.sizeimage = width * height * 3 / 2; 
+        outputFormat.fmt.plane_fmt_0.bytesperline = (ushort)width;
         
         if (!set_format(ref outputFormat))
         {

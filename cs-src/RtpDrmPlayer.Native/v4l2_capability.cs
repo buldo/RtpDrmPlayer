@@ -2,4 +2,13 @@ using System.Runtime.InteropServices;
 
 namespace RtpDrmPlayer.Native;
 
-[StructLayout(LayoutKind.Sequential)] public struct v4l2_capability { [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)] public byte[] driver; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)] public byte[] card; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)] public byte[] bus_info; public uint version; public uint capabilities; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)] public uint[] reserved; }
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct v4l2_capability
+{
+    public fixed byte driver[16];
+    public fixed byte card[32];
+    public fixed byte bus_info[32];
+    public uint version;
+    public uint capabilities;
+    public fixed uint reserved[4];
+}

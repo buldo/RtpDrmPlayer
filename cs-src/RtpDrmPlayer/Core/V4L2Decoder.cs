@@ -20,27 +20,60 @@ public class V4L2Decoder : IDisposable
         _dev.SetControl(V4L2Const.V4L2_CID_MIN_BUFFERS_FOR_CAPTURE,1);
         ulong inSz=_cfg.DefaultInputBufferSize; ulong outSz=(ulong)(_curWidth*_curHeight*3/2); if(!_in.Allocate(inSz)||!_out.Allocate(outSz)) return false; var reqOut=new v4l2_requestbuffers{ count=(uint)_cfg.InputBufferCount, memory=V4L2Const.V4L2_MEMORY_DMABUF, type=V4L2Const.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE}; _dev.RequestBuffers(ref reqOut); var reqCap=new v4l2_requestbuffers{ count=(uint)_cfg.OutputBufferCount, memory=V4L2Const.V4L2_MEMORY_DMABUF, type=V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE}; _dev.RequestBuffers(ref reqCap); _stream=new StreamingManager(_dev,_out); _disp=null; _proc=new FrameProcessor(_disp,_out,_curWidth,_curHeight, idx=> _disp?.SetupZeroCopyBuffer(_out[idx].Fd,_curWidth,_curHeight)==true,_out.Count); SubscribeEvents(); _ready=true; _stream.Start(); StartPollLoop(); return true; }
 
-    private void SetupFormats(uint w,uint h){
-        var inPlanes=new v4l2_plane_pix_format[8];
-        inPlanes[0]=new v4l2_plane_pix_format{ sizeimage=_cfg.DefaultInputBufferSize>uint.MaxValue?uint.MaxValue:(uint)_cfg.DefaultInputBufferSize, bytesperline=0, reserved=new ushort[7] };
-        for(int i=1;i<8;i++) inPlanes[i]=new v4l2_plane_pix_format{ sizeimage=0, bytesperline=0, reserved=new ushort[7] };
-        bool nv12=_cfg.OutputPixelFormat==V4L2Const.V4L2_PIX_FMT_NV12;
-        var outPlanes=new v4l2_plane_pix_format[8];
-        if(nv12){
-            outPlanes[0]=new v4l2_plane_pix_format{ sizeimage=(uint)(w*h), bytesperline=(ushort)w, reserved=new ushort[7] };
-            outPlanes[1]=new v4l2_plane_pix_format{ sizeimage=(uint)(w*h/2), bytesperline=(ushort)w, reserved=new ushort[7] };
-            for(int i=2;i<8;i++) outPlanes[i]=new v4l2_plane_pix_format{ sizeimage=0, bytesperline=0, reserved=new ushort[7] };
-        } else {
-            outPlanes[0]=new v4l2_plane_pix_format{ sizeimage=(uint)(w*h*3/2), bytesperline=(ushort)w, reserved=new ushort[7] };
-            for(int i=1;i<8;i++) outPlanes[i]=new v4l2_plane_pix_format{ sizeimage=0, bytesperline=0, reserved=new ushort[7] };
+    private unsafe void SetupFormats(uint w, uint h)
+    {
+        var fmtIn = new v4l2_format
+        {
+            type = V4L2Const.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+            fmt = new v4l2_pix_mp
+            {
+                width = w,
+                height = h,
+                pixelformat = _cfg.InputCodec,
+                num_planes = 1
+            }
+        };
+        fmtIn.fmt.plane_fmt_0.sizeimage = (uint)_cfg.DefaultInputBufferSize;
+        _dev.SetFormat(ref fmtIn);
+
+        bool nv12 = _cfg.OutputPixelFormat == V4L2Const.V4L2_PIX_FMT_NV12;
+        byte outCnt = (byte)(nv12 ? 2 : 1);
+        var fmtOut = new v4l2_format
+        {
+            type = V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
+            fmt = new v4l2_pix_mp
+            {
+                width = w,
+                height = h,
+                pixelformat = _cfg.OutputPixelFormat,
+                num_planes = outCnt
+            }
+        };
+
+        if (nv12)
+        {
+            fmtOut.fmt.plane_fmt_0.sizeimage = w * h;
+            fmtOut.fmt.plane_fmt_0.bytesperline = (ushort)w;
+            fmtOut.fmt.plane_fmt_1.sizeimage = w * h / 2;
+            fmtOut.fmt.plane_fmt_1.bytesperline = (ushort)w;
         }
-        var fmtIn=new v4l2_format{ type=V4L2Const.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, fmt=new v4l2_pix_mp{ width=w,height=h,pixelformat=_cfg.InputCodec,field=0,colorspace=0,plane_fmt=inPlanes,num_planes=1,flags=0,ycbcr_enc=0,quantization=0,xfer_func=0,reserved=new byte[7] } }; _dev.SetFormat(ref fmtIn);
-        byte outCnt=(byte)(nv12?2:1);
-        var fmtOut=new v4l2_format{ type=V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, fmt=new v4l2_pix_mp{ width=w,height=h,pixelformat=_cfg.OutputPixelFormat,field=0,colorspace=0,plane_fmt=outPlanes,num_planes=outCnt,flags=0,ycbcr_enc=0,quantization=0,xfer_func=0,reserved=new byte[7] } }; _dev.SetFormat(ref fmtOut);
+        else
+        {
+            fmtOut.fmt.plane_fmt_0.sizeimage = w * h * 3 / 2;
+            fmtOut.fmt.plane_fmt_0.bytesperline = (ushort)w;
+        }
+        _dev.SetFormat(ref fmtOut);
     }
 
     private void ReconfigureCapture(){ lock(_lock){ Console.WriteLine($"[V4L2] Reconfigure capture requested"); _dev.StreamOff(V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE); var freeReq=new v4l2_requestbuffers{ count=0, memory=V4L2Const.V4L2_MEMORY_DMABUF, type=V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE}; _dev.RequestBuffers(ref freeReq); var fmtOut=new v4l2_format{ type=V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE }; _dev.GetFormat(ref fmtOut); _curWidth=fmtOut.fmt.width; _curHeight=fmtOut.fmt.height; Console.WriteLine($"[V4L2] New resolution {_curWidth}x{_curHeight}"); SetupFormats(_curWidth,_curHeight); ulong outSz=(ulong)(_curWidth*_curHeight*3/2); _out.Deallocate(); _out.Allocate(outSz); var reqCap=new v4l2_requestbuffers{ count=(uint)_cfg.OutputBufferCount, memory=V4L2Const.V4L2_MEMORY_DMABUF, type=V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE}; _dev.RequestBuffers(ref reqCap); _dev.StreamOn(V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE); _proc?.UpdateDimensions(_curWidth,_curHeight); _disp?.OnResolutionChange(_curWidth,_curHeight); } }
-    private void SubscribeEvents(){ foreach(var evType in new[]{ V4L2Const.V4L2_EVENT_EOS, V4L2Const.V4L2_EVENT_SOURCE_CHANGE, V4L2Const.V4L2_EVENT_FRAME_SYNC}){ var sub=new v4l2_event_subscription{ type=evType, reserved=new uint[5] }; _dev.SubscribeEvent(ref sub); } }
+    private unsafe void SubscribeEvents()
+    {
+        foreach (var evType in new[] { V4L2Const.V4L2_EVENT_EOS, V4L2Const.V4L2_EVENT_SOURCE_CHANGE, V4L2Const.V4L2_EVENT_FRAME_SYNC })
+        {
+            var sub = new v4l2_event_subscription { type = evType };
+            _dev.SubscribeEvent(ref sub);
+        }
+    }
     private void StartPollLoop(){ if(_cts!=null) return; _cts=new CancellationTokenSource(); _pollTask=Task.Run(()=>PollLoop(_cts.Token)); }
     private void PollLoop(CancellationToken ct){ if(!_ready) return; while(!ct.IsCancellationRequested){ try{ if(_needsReset){ ResetBuffers(); continue; } if(!_dev.Poll((short)(LibC.POLLIN|LibC.POLLPRI),50)){ TryDequeueOutputNonBlocking(); continue; } if(_dev.HasError){ Thread.Sleep(10); continue; } if(_dev.HasEvent){ var ev=new v4l2_event{ u=new uint[8], reserved=new uint[8] }; if(_dev.DQEvent(ref ev)){ HandleEvent(ev); } } if(_dev.ReadyRead){ if(_dev.DequeueMultiPlane(V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, out var index, out var flags, out var seq, out var planes)){ if((flags & V4L2Const.V4L2_BUF_FLAG_ERROR)!=0){ Console.Error.WriteLine("[V4L2] Capture buffer error flag set"); } ulong used=0; var pitches=new uint[planes.Length]; var offsets=new uint[planes.Length]; for(int p=0;p<planes.Length;p++){ used+=planes[p].bytesused; pitches[p]=planes[p].bytesused>0? planes[p].bytesused : planes[p].length; offsets[p]=planes[p].data_offset; } _proc?.ProcessDecoded((int)index, used, _cfg.OutputPixelFormat, planes.Length, pitches, offsets); var info=_out[(int)index]; _dev.QueueMultiPlaneDmabuf(index,V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,new[]{info.Fd},new[]{(uint)info.Size},new uint[]{0}); if(_seenSourceChange){ _seenSourceChange=false; _needsReset=true; } } } TryDequeueOutputNonBlocking(); } catch { Thread.Sleep(20);} } }
     private void TryDequeueOutputNonBlocking(){ if(_dev.DequeueMultiPlane(V4L2Const.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, out var idx, out var flags, out var seq, out var planes)){ _in.MarkFree((int)idx); } }
