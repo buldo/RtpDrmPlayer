@@ -118,7 +118,7 @@ public sealed class V4L2Device : IDisposable
     }
     
     // Безопасная версия ioctl с использованием GCHandle
-    private unsafe bool SafeIoctl<T>(ulong request, ref T structure, string requestName) where T : struct
+    private unsafe bool SafeIoctl<T>(ulong request, ref T structure, string requestName) where T : unmanaged
     {
         fixed (T* p = &structure)
         {
@@ -673,6 +673,46 @@ public sealed class V4L2Device : IDisposable
             }
             
             return result;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(planeMemory);
+        }
+    }
+
+    /// <summary>
+    /// Ставит одноплоскостной DMA-BUF буфер в очередь
+    /// </summary>
+    public bool queue_single_plane_dmabuf(uint index, uint type, int fd, uint bytesused, uint length, uint flags = 0)
+    {
+        Console.WriteLine($"Queueing single-plane DMA-BUF buffer: index={index}, type={type}, fd={fd}, bytesused={bytesused}, flags=0x{flags:X}");
+
+        var plane = new v4l2_plane
+        {
+            bytesused = bytesused,
+            length = length,
+            m_fd = fd,
+            data_offset = 0
+        };
+
+        int planeSize = Marshal.SizeOf<v4l2_plane>();
+        IntPtr planeMemory = Marshal.AllocHGlobal(planeSize);
+
+        try
+        {
+            Marshal.StructureToPtr(plane, planeMemory, false);
+
+            var buffer = new v4l2_buffer
+            {
+                index = index,
+                type = type,
+                memory = V4L2Const.V4L2_MEMORY_DMABUF,
+                length = 1, // Single plane
+                m_planes = planeMemory,
+                flags = flags
+            };
+
+            return queue_buffer(ref buffer);
         }
         finally
         {

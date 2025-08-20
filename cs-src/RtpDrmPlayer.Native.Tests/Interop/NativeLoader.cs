@@ -63,6 +63,15 @@ internal static class NativeLoader
     public short POLLOUT_;
     public short POLLERR_;
     public uint SIZE_v4l2_pix_format_mplane;
+    public uint SIZE_v4l2_buffer;
+    public uint SIZE_v4l2_plane;
+    public uint SIZE_v4l2_format;
+    public uint SIZE_v4l2_plane_pix_format;
+    public uint SIZE_v4l2_event_subscription;
+    public uint SIZE_v4l2_event;
+    public uint SIZE_v4l2_requestbuffers;
+    public uint SIZE_v4l2_capability;
+    public uint SIZE_v4l2_control;
     }
 
     private static readonly Lazy<ExportedConsts> _instance = new(Load);

@@ -17,7 +17,11 @@ public class V4L2Decoder : IDisposable
         var cap=new v4l2_capability(); if(_dev.QueryCapability(ref cap)){ if((cap.capabilities & V4L2Const.V4L2_CAP_VIDEO_M2M_MPLANE)==0){ Console.Error.WriteLine("[V4L2] Device lacks M2M_MPLANE capability"); return false; } } else { Console.Error.WriteLine("[V4L2] QUERYCAP failed"); }
         if(!_dev.CheckDmaBufSupport()){ Console.Error.WriteLine("[V4L2] DMA-BUF not supported"); return false; }
         _curWidth=_cfg.Width; _curHeight=_cfg.Height; SetupFormats(_curWidth,_curHeight); // set MIN_BUFFERS_FOR_CAPTURE=1 for low latency
-        _dev.SetControl(V4L2Const.V4L2_CID_MIN_BUFFERS_FOR_CAPTURE,1);
+        if (!_dev.SetControl(V4L2Const.V4L2_CID_MIN_BUFFERS_FOR_CAPTURE, 1))
+        {
+            Console.WriteLine("[V4L2] WARNING: Failed to set V4L2_CID_MIN_BUFFERS_FOR_CAPTURE=1. This may increase latency.");
+        }
+        
         ulong inSz=_cfg.DefaultInputBufferSize; ulong outSz=(ulong)(_curWidth*_curHeight*3/2); if(!_in.Allocate(inSz)||!_out.Allocate(outSz)) return false; var reqOut=new v4l2_requestbuffers{ count=(uint)_cfg.InputBufferCount, memory=V4L2Const.V4L2_MEMORY_DMABUF, type=V4L2Const.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE}; _dev.RequestBuffers(ref reqOut); var reqCap=new v4l2_requestbuffers{ count=(uint)_cfg.OutputBufferCount, memory=V4L2Const.V4L2_MEMORY_DMABUF, type=V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE}; _dev.RequestBuffers(ref reqCap); _stream=new StreamingManager(_dev,_out); _disp=null; _proc=new FrameProcessor(_disp,_out,_curWidth,_curHeight, idx=> _disp?.SetupZeroCopyBuffer(_out[idx].Fd,_curWidth,_curHeight)==true,_out.Count); SubscribeEvents(); _ready=true; _stream.Start(); StartPollLoop(); return true; }
 
     private unsafe void SetupFormats(uint w, uint h)
@@ -75,7 +79,7 @@ public class V4L2Decoder : IDisposable
         }
     }
     private void StartPollLoop(){ if(_cts!=null) return; _cts=new CancellationTokenSource(); _pollTask=Task.Run(()=>PollLoop(_cts.Token)); }
-    private void PollLoop(CancellationToken ct){ if(!_ready) return; while(!ct.IsCancellationRequested){ try{ if(_needsReset){ ResetBuffers(); continue; } if(!_dev.Poll((short)(LibC.POLLIN|LibC.POLLPRI),50)){ TryDequeueOutputNonBlocking(); continue; } if(_dev.HasError){ Thread.Sleep(10); continue; } if(_dev.HasEvent){ var ev=new v4l2_event{ u=new uint[8], reserved=new uint[8] }; if(_dev.DQEvent(ref ev)){ HandleEvent(ev); } } if(_dev.ReadyRead){ if(_dev.DequeueMultiPlane(V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, out var index, out var flags, out var seq, out var planes)){ if((flags & V4L2Const.V4L2_BUF_FLAG_ERROR)!=0){ Console.Error.WriteLine("[V4L2] Capture buffer error flag set"); } ulong used=0; var pitches=new uint[planes.Length]; var offsets=new uint[planes.Length]; for(int p=0;p<planes.Length;p++){ used+=planes[p].bytesused; pitches[p]=planes[p].bytesused>0? planes[p].bytesused : planes[p].length; offsets[p]=planes[p].data_offset; } _proc?.ProcessDecoded((int)index, used, _cfg.OutputPixelFormat, planes.Length, pitches, offsets); var info=_out[(int)index]; _dev.QueueMultiPlaneDmabuf(index,V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,new[]{info.Fd},new[]{(uint)info.Size},new uint[]{0}); if(_seenSourceChange){ _seenSourceChange=false; _needsReset=true; } } } TryDequeueOutputNonBlocking(); } catch { Thread.Sleep(20);} } }
+    private void PollLoop(CancellationToken ct){ if(!_ready) return; while(!ct.IsCancellationRequested){ try{ if(_needsReset){ ResetBuffers(); continue; } if(!_dev.Poll((short)(LibC.POLLIN|LibC.POLLPRI),50)){ TryDequeueOutputNonBlocking(); continue; } if(_dev.HasError){ Thread.Sleep(10); continue; } if(_dev.HasEvent){ var ev = new v4l2_event(); if(_dev.DQEvent(ref ev)){ HandleEvent(ev); } } if(_dev.ReadyRead){ if(_dev.DequeueMultiPlane(V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, out var index, out var flags, out var seq, out var planes)){ if((flags & V4L2Const.V4L2_BUF_FLAG_ERROR)!=0){ Console.Error.WriteLine("[V4L2] Capture buffer error flag set"); } ulong used=0; var pitches=new uint[planes.Length]; var offsets=new uint[planes.Length]; for(int p=0;p<planes.Length;p++){ used+=planes[p].bytesused; pitches[p]=planes[p].bytesused>0? planes[p].bytesused : planes[p].length; offsets[p]=planes[p].data_offset; } _proc?.ProcessDecoded((int)index, used, _cfg.OutputPixelFormat, planes.Length, pitches, offsets); var info=_out[(int)index]; _dev.QueueMultiPlaneDmabuf(index,V4L2Const.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,new[]{info.Fd},new[]{(uint)info.Size},new uint[]{0}); if(_seenSourceChange){ _seenSourceChange=false; _needsReset=true; } } } TryDequeueOutputNonBlocking(); } catch { Thread.Sleep(20);} } }
     private void TryDequeueOutputNonBlocking(){ if(_dev.DequeueMultiPlane(V4L2Const.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, out var idx, out var flags, out var seq, out var planes)){ _in.MarkFree((int)idx); } }
     public bool DecodeFrame(ReadOnlySpan<byte> data){ if(!_ready) return false; if(!_stream!.IsActive) _stream.Start(); int idx=_rnd.Next(0,_out.Count); _proc!.ProcessDecoded(idx,(ulong)data.Length,_cfg.OutputPixelFormat); return true; }
     // Имитация подачи закодированного кадра в OUTPUT очередь (single-plane)
@@ -87,10 +91,10 @@ public class V4L2Decoder : IDisposable
         // копируем кусок (ограничено размером буфера)
         unsafe
         {
-            var copyLen=(int)Math.Min((ulong)encoded.Length, info.Size);
-            new Span<byte>((void*)info.Mapped, copyLen).Slice(0,copyLen).Clear(); // очистим
-            encoded.Slice(0,copyLen).CopyTo(new Span<byte>((void*)info.Mapped, copyLen));
-            _dev.QueueMultiPlaneDmabuf((uint)idx, V4L2Const.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, new[]{info.Fd}, new[]{(uint)info.Size}, new uint[]{0}, new uint[]{(uint)copyLen});
+            var copyLen = (uint)Math.Min((ulong)encoded.Length, info.Size);
+            new Span<byte>((void*)info.Mapped, (int)copyLen).Slice(0, (int)copyLen).Clear(); // очистим
+            encoded.Slice(0, (int)copyLen).CopyTo(new Span<byte>((void*)info.Mapped, (int)copyLen));
+            _dev.queue_single_plane_dmabuf((uint)idx, V4L2Const.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, info.Fd, copyLen, (uint)info.Size);
         }
         _in.MarkInUse(idx);
         return true;

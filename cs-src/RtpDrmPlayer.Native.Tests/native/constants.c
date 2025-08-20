@@ -60,6 +60,15 @@ struct exported_consts {
     short POLLOUT_;
     short POLLERR_;
     uint32_t SIZE_v4l2_pix_format_mplane;
+    uint32_t SIZE_v4l2_buffer;
+    uint32_t SIZE_v4l2_plane;
+    uint32_t SIZE_v4l2_format;
+    uint32_t SIZE_v4l2_plane_pix_format;
+    uint32_t SIZE_v4l2_event_subscription;
+    uint32_t SIZE_v4l2_event;
+    uint32_t SIZE_v4l2_requestbuffers;
+    uint32_t SIZE_v4l2_capability;
+    uint32_t SIZE_v4l2_control;
 };
 
 #ifdef __cplusplus
@@ -118,6 +127,15 @@ __attribute__((visibility("default"))) struct exported_consts get_exported_const
     .POLLOUT_ = POLLOUT,
     .POLLERR_ = POLLERR,
     .SIZE_v4l2_pix_format_mplane = sizeof(struct v4l2_pix_format_mplane),
+    .SIZE_v4l2_buffer = sizeof(struct v4l2_buffer),
+    .SIZE_v4l2_plane = sizeof(struct v4l2_plane),
+    .SIZE_v4l2_format = sizeof(struct v4l2_format),
+    .SIZE_v4l2_plane_pix_format = sizeof(struct v4l2_plane_pix_format),
+    .SIZE_v4l2_event_subscription = sizeof(struct v4l2_event_subscription),
+    .SIZE_v4l2_event = sizeof(struct v4l2_event),
+    .SIZE_v4l2_requestbuffers = sizeof(struct v4l2_requestbuffers),
+    .SIZE_v4l2_capability = sizeof(struct v4l2_capability),
+    .SIZE_v4l2_control = sizeof(struct v4l2_control),
     };
     return c;
 }

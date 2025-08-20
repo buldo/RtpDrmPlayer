@@ -118,4 +118,22 @@ public class ConstTests
     public void POLLERR_Match() => Assert.Equal(LibC.POLLERR, N.POLLERR_);
     [Fact]
     public void SIZE_v4l2_pix_format_mplane_Match() => Assert.Equal((uint)Marshal.SizeOf<v4l2_pix_mp>(), N.SIZE_v4l2_pix_format_mplane);
+    [Fact]
+    public void SIZE_v4l2_buffer_Match() => Assert.Equal((uint)Marshal.SizeOf<v4l2_buffer>(), N.SIZE_v4l2_buffer);
+    [Fact]
+    public void SIZE_v4l2_plane_Match() => Assert.Equal((uint)Marshal.SizeOf<v4l2_plane>(), N.SIZE_v4l2_plane);
+    [Fact]
+    public void SIZE_v4l2_format_Match() => Assert.Equal((uint)Marshal.SizeOf<v4l2_format>(), N.SIZE_v4l2_format);
+    [Fact]
+    public void SIZE_v4l2_plane_pix_format_Match() => Assert.Equal((uint)Marshal.SizeOf<v4l2_plane_pix_format>(), N.SIZE_v4l2_plane_pix_format);
+    [Fact]
+    public void SIZE_v4l2_event_subscription_Match() => Assert.Equal((uint)Marshal.SizeOf<v4l2_event_subscription>(), N.SIZE_v4l2_event_subscription);
+    [Fact]
+    public void SIZE_v4l2_event_Match() => Assert.Equal((uint)Marshal.SizeOf<v4l2_event>(), N.SIZE_v4l2_event);
+    [Fact]
+    public void SIZE_v4l2_requestbuffers_Match() => Assert.Equal((uint)Marshal.SizeOf<v4l2_requestbuffers>(), N.SIZE_v4l2_requestbuffers);
+    [Fact]
+    public void SIZE_v4l2_capability_Match() => Assert.Equal((uint)Marshal.SizeOf<v4l2_capability>(), N.SIZE_v4l2_capability);
+    [Fact]
+    public void SIZE_v4l2_control_Match() => Assert.Equal((uint)Marshal.SizeOf<v4l2_control>(), N.SIZE_v4l2_control);
 }
