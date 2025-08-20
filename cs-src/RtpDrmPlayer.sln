@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36414.22
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RtpDrmPlayer", "RtpDrmPlayer\RtpDrmPlayer.csproj", "{6FA936F0-AB59-4B2B-BED4-4601DB0120D3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RtpDrmPlayer.Native", "RtpDrmPlayer.Native\RtpDrmPlayer.Native.csproj", "{D931FD66-4FCD-3DC2-389A-6DE100541A12}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{6FA936F0-AB59-4B2B-BED4-4601DB0120D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6FA936F0-AB59-4B2B-BED4-4601DB0120D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6FA936F0-AB59-4B2B-BED4-4601DB0120D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D931FD66-4FCD-3DC2-389A-6DE100541A12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D931FD66-4FCD-3DC2-389A-6DE100541A12}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D931FD66-4FCD-3DC2-389A-6DE100541A12}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D931FD66-4FCD-3DC2-389A-6DE100541A12}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
