@@ -5,6 +5,16 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../RtpDrmPlayer.Native/RtpDrmPlayer.Native.csproj" />
+  </ItemGroup>
+
+  <!-- Исключаем устаревший файл interop -->
+  <ItemGroup>
+    <Compile Remove="Core/Native/LinuxNative.cs" />
+  </ItemGroup>
 
 </Project>
