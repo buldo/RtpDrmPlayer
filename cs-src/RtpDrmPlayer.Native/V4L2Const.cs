@@ -5,10 +5,14 @@ public static class V4L2Const
     private static uint FCC(char a, char b, char c, char d) => (uint)(byte)a | ((uint)(byte)b << 8) | ((uint)(byte)c << 16) | ((uint)(byte)d << 24);
     public static readonly uint V4L2_PIX_FMT_H264 = FCC('H','2','6','4');
     public static readonly uint V4L2_PIX_FMT_YUV420 = FCC('Y','U','1','2');
+    public static readonly uint V4L2_PIX_FMT_NV12 = FCC('N','V','1','2');
 
     public const uint V4L2_CAP_VIDEO_M2M_MPLANE = 0x00004000;
     public const uint V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE = 9;
     public const uint V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE = 10;
+    public const uint V4L2_MEMORY_MMAP = 1;
+    public const uint V4L2_MEMORY_USERPTR = 2;
+    public const uint V4L2_MEMORY_OVERLAY = 3;
     public const uint V4L2_MEMORY_DMABUF = 4;
     public const uint V4L2_EVENT_EOS = 5;
     public const uint V4L2_EVENT_SOURCE_CHANGE = 6;

@@ -34,8 +34,19 @@ internal static class NativeLoader
         public ulong VIDIOC_SUBSCRIBE_EVENT;
         public ulong VIDIOC_DQEVENT;
         public ulong DMA_BUF_IOCTL_SYNC;
+    public ulong DRM_IOCTL_PRIME_FD_TO_HANDLE;
+    public ulong DRM_IOCTL_GEM_CLOSE;
+    public ulong DRM_IOCTL_MODE_GETRESOURCES;
+    public ulong DRM_IOCTL_MODE_GETCRTC;
+    public ulong DRM_IOCTL_MODE_SETCRTC;
+    public ulong DRM_IOCTL_MODE_GETENCODER;
+    public ulong DRM_IOCTL_MODE_GETCONNECTOR;
+    public ulong DRM_IOCTL_MODE_ADDFB2;
+    public ulong DRM_IOCTL_MODE_RMFB;
+    public ulong DRM_IOCTL_MODE_PAGE_FLIP;
     public uint V4L2_PIX_FMT_H264;
     public uint V4L2_PIX_FMT_YUV420;
+    public uint V4L2_PIX_FMT_NV12;
     public uint DMA_BUF_SYNC_START;
     public uint DMA_BUF_SYNC_END;
     public uint DMA_BUF_SYNC_RW;
@@ -49,6 +60,7 @@ internal static class NativeLoader
     public short POLLPRI_;
     public short POLLOUT_;
     public short POLLERR_;
+    public uint SIZE_v4l2_pix_format_mplane;
     }
 
     [DllImport(LibName, EntryPoint = "get_exported_consts")]

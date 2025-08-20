@@ -1,5 +1,6 @@
 #include <linux/videodev2.h>
 #include <linux/dma-buf.h>
+#include <drm/drm.h>
 #include <stdint.h>
 
 struct exported_consts {
@@ -26,9 +27,20 @@ struct exported_consts {
     unsigned long VIDIOC_SUBSCRIBE_EVENT;
     unsigned long VIDIOC_DQEVENT;
     unsigned long DMA_BUF_IOCTL_SYNC;
+    unsigned long DRM_IOCTL_PRIME_FD_TO_HANDLE;
+    unsigned long DRM_IOCTL_GEM_CLOSE;
+    unsigned long DRM_IOCTL_MODE_GETRESOURCES;
+    unsigned long DRM_IOCTL_MODE_GETCRTC;
+    unsigned long DRM_IOCTL_MODE_SETCRTC;
+    unsigned long DRM_IOCTL_MODE_GETENCODER;
+    unsigned long DRM_IOCTL_MODE_GETCONNECTOR;
+    unsigned long DRM_IOCTL_MODE_ADDFB2;
+    unsigned long DRM_IOCTL_MODE_RMFB;
+    unsigned long DRM_IOCTL_MODE_PAGE_FLIP;
     /* Pixel formats */
     uint32_t V4L2_PIX_FMT_H264;
     uint32_t V4L2_PIX_FMT_YUV420;
+    uint32_t V4L2_PIX_FMT_NV12;
     /* DMA BUF sync flags */
     uint32_t DMA_BUF_SYNC_START;
     uint32_t DMA_BUF_SYNC_END;
@@ -44,6 +56,7 @@ struct exported_consts {
     short POLLPRI_;
     short POLLOUT_;
     short POLLERR_;
+    uint32_t SIZE_v4l2_pix_format_mplane;
 };
 
 #ifdef __cplusplus
@@ -75,8 +88,19 @@ __attribute__((visibility("default"))) struct exported_consts get_exported_const
         .VIDIOC_SUBSCRIBE_EVENT = VIDIOC_SUBSCRIBE_EVENT,
         .VIDIOC_DQEVENT = VIDIOC_DQEVENT,
         .DMA_BUF_IOCTL_SYNC = DMA_BUF_IOCTL_SYNC,
+        .DRM_IOCTL_PRIME_FD_TO_HANDLE = DRM_IOCTL_PRIME_FD_TO_HANDLE,
+        .DRM_IOCTL_GEM_CLOSE = DRM_IOCTL_GEM_CLOSE,
+        .DRM_IOCTL_MODE_GETRESOURCES = DRM_IOCTL_MODE_GETRESOURCES,
+        .DRM_IOCTL_MODE_GETCRTC = DRM_IOCTL_MODE_GETCRTC,
+        .DRM_IOCTL_MODE_SETCRTC = DRM_IOCTL_MODE_SETCRTC,
+        .DRM_IOCTL_MODE_GETENCODER = DRM_IOCTL_MODE_GETENCODER,
+        .DRM_IOCTL_MODE_GETCONNECTOR = DRM_IOCTL_MODE_GETCONNECTOR,
+        .DRM_IOCTL_MODE_ADDFB2 = DRM_IOCTL_MODE_ADDFB2,
+        .DRM_IOCTL_MODE_RMFB = DRM_IOCTL_MODE_RMFB,
+        .DRM_IOCTL_MODE_PAGE_FLIP = DRM_IOCTL_MODE_PAGE_FLIP,
     .V4L2_PIX_FMT_H264 = V4L2_PIX_FMT_H264,
     .V4L2_PIX_FMT_YUV420 = V4L2_PIX_FMT_YUV420,
+    .V4L2_PIX_FMT_NV12 = V4L2_PIX_FMT_NV12,
     .DMA_BUF_SYNC_START = DMA_BUF_SYNC_START,
     .DMA_BUF_SYNC_END = DMA_BUF_SYNC_END,
     .DMA_BUF_SYNC_RW = DMA_BUF_SYNC_RW,
@@ -90,6 +114,7 @@ __attribute__((visibility("default"))) struct exported_consts get_exported_const
     .POLLPRI_ = POLLPRI,
     .POLLOUT_ = POLLOUT,
     .POLLERR_ = POLLERR,
+    .SIZE_v4l2_pix_format_mplane = sizeof(struct v4l2_pix_format_mplane),
     };
     return c;
 }

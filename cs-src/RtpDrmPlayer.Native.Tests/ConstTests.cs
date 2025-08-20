@@ -40,8 +40,19 @@ public class ConstTests
     [Fact] public void VIDIOC_SUBSCRIBE_EVENT_Match() => Assert.Equal(N.VIDIOC_SUBSCRIBE_EVENT, V4L2Const.VIDIOC_SUBSCRIBE_EVENT);
     [Fact] public void VIDIOC_DQEVENT_Match() => Assert.Equal(N.VIDIOC_DQEVENT, V4L2Const.VIDIOC_DQEVENT);
     [Fact] public void DMA_BUF_IOCTL_SYNC_Match() => Assert.Equal(N.DMA_BUF_IOCTL_SYNC, DmaBufConst.DMA_BUF_IOCTL_SYNC);
+    [Fact] public void DRM_IOCTL_PRIME_FD_TO_HANDLE_Match() => Assert.Equal(N.DRM_IOCTL_PRIME_FD_TO_HANDLE, DrmConst.DRM_IOCTL_PRIME_FD_TO_HANDLE);
+    [Fact] public void DRM_IOCTL_GEM_CLOSE_Match() => Assert.Equal(N.DRM_IOCTL_GEM_CLOSE, DrmConst.DRM_IOCTL_GEM_CLOSE);
+    [Fact] public void DRM_IOCTL_MODE_GETRESOURCES_Match() => Assert.Equal(N.DRM_IOCTL_MODE_GETRESOURCES, DrmConst.DRM_IOCTL_MODE_GETRESOURCES);
+    [Fact] public void DRM_IOCTL_MODE_GETCRTC_Match() => Assert.Equal(N.DRM_IOCTL_MODE_GETCRTC, DrmConst.DRM_IOCTL_MODE_GETCRTC);
+    [Fact] public void DRM_IOCTL_MODE_SETCRTC_Match() => Assert.Equal(N.DRM_IOCTL_MODE_SETCRTC, DrmConst.DRM_IOCTL_MODE_SETCRTC);
+    [Fact] public void DRM_IOCTL_MODE_GETENCODER_Match() => Assert.Equal(N.DRM_IOCTL_MODE_GETENCODER, DrmConst.DRM_IOCTL_MODE_GETENCODER);
+    [Fact] public void DRM_IOCTL_MODE_GETCONNECTOR_Match() => Assert.Equal(N.DRM_IOCTL_MODE_GETCONNECTOR, DrmConst.DRM_IOCTL_MODE_GETCONNECTOR);
+    [Fact] public void DRM_IOCTL_MODE_ADDFB2_Match() => Assert.Equal(N.DRM_IOCTL_MODE_ADDFB2, DrmConst.DRM_IOCTL_MODE_ADDFB2);
+    [Fact] public void DRM_IOCTL_MODE_RMFB_Match() => Assert.Equal(N.DRM_IOCTL_MODE_RMFB, DrmConst.DRM_IOCTL_MODE_RMFB);
+    [Fact] public void DRM_IOCTL_MODE_PAGE_FLIP_Match() => Assert.Equal(N.DRM_IOCTL_MODE_PAGE_FLIP, DrmConst.DRM_IOCTL_MODE_PAGE_FLIP);
     [Fact] public void PIX_FMT_H264_Match() => Assert.Equal(N.V4L2_PIX_FMT_H264, V4L2Const.V4L2_PIX_FMT_H264);
     [Fact] public void PIX_FMT_YUV420_Match() => Assert.Equal(N.V4L2_PIX_FMT_YUV420, V4L2Const.V4L2_PIX_FMT_YUV420);
+    [Fact] public void PIX_FMT_NV12_Match() => Assert.Equal(N.V4L2_PIX_FMT_NV12, V4L2Const.V4L2_PIX_FMT_NV12);
     [Fact] public void DMA_BUF_SYNC_START_Match() => Assert.Equal(N.DMA_BUF_SYNC_START, DmaBufConst.DMA_BUF_SYNC_START);
     [Fact] public void DMA_BUF_SYNC_END_Match() => Assert.Equal(N.DMA_BUF_SYNC_END, DmaBufConst.DMA_BUF_SYNC_END);
     [Fact] public void DMA_BUF_SYNC_RW_Match() => Assert.Equal(N.DMA_BUF_SYNC_RW, DmaBufConst.DMA_BUF_SYNC_RW);
@@ -55,4 +66,5 @@ public class ConstTests
     [Fact] public void POLLPRI_Match() => Assert.Equal(N.POLLPRI_, LibC.POLLPRI);
     [Fact] public void POLLOUT_Match() => Assert.Equal(N.POLLOUT_, LibC.POLLOUT);
     [Fact] public void POLLERR_Match() => Assert.Equal(N.POLLERR_, LibC.POLLERR);
+    [Fact] public void Size_v4l2_pix_mp_Match() => Assert.Equal(N.SIZE_v4l2_pix_format_mplane, (uint)System.Runtime.InteropServices.Marshal.SizeOf<v4l2_pix_mp>());
 }
