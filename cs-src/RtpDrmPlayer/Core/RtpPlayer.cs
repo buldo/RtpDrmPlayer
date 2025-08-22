@@ -21,7 +21,7 @@ public class RtpPlayer : IDisposable
         }
         if(!(_hasSps && _hasPps)) return;
         if(!_q.TryAdd(f)){ _q.TryTake(out _); _q.TryAdd(f);} }
-    public void Start(){ _cts=new CancellationTokenSource(); _loop=Task.Run(()=>Loop(_cts.Token)); _rx?.Start(); }
+    public void Start(){ _cts=new CancellationTokenSource(); _dec?.Start(); _loop=Task.Run(()=>Loop(_cts.Token)); _rx?.Start(); }
     private void Loop(CancellationToken ct){ while(!ct.IsCancellationRequested){ if(!_q.TryTake(out var f,100)) continue; _dec?.FeedInputFrame(f.Data); } }
     public void Stop(){ _rx?.Stop(); _cts?.Cancel(); try{ _loop?.Wait(); }catch{} }
     public void Dispose(){ Stop(); _dec?.Dispose(); _rx?.Dispose(); }

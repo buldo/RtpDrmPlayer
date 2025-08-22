@@ -277,4 +277,9 @@ public class DmaBuffersManager : IDisposable
     public void MarkFree(int index) => mark_free(index);
     public bool RequestOnDevice(V4L2Device device, uint bufType) => requestOnDevice(device);
     public bool ReleaseOnDevice(V4L2Device device, uint bufType) => releaseOnDevice(device);
+
+    /// <summary>
+    /// Получает тип буфера
+    /// </summary>
+    public uint Type => _type;
 }
